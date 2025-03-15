@@ -1,0 +1,49 @@
+spring:
+  application:
+    name: E-Learning Service
+  datasource:
+    url: "jdbc:sqlserver://localhost:1433;databaseName=DB_Courses;encrypt=false;trustServerCertificate=true"
+    username: sa
+    password: 1
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+  main:
+    banner-mode: off
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.SQLServerDialect
+
+server:
+  port: 8080
+  servlet:
+    context-path: /elearning-service
+
+jwt:
+  signerKey: "1TjXchw5FloESb63Kc+DFhTARvpWL4jUGCwfGWxuG5SIf/1y/LgJxHnMqaF6A/ij"
+  valid-duration: 36000 # in second
+  refreshable-duration: 72000 # in seconds
+  valid-discount-duration: 7
+
+kafka:
+  hostname: locahost
+  port: 9092
+  group-id: gr-sync-order
+
+aws:
+  access_key: "AKIAWOOXT4Q3MQLSBJHO"
+  secret-key: "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"
+  bucket: "mystorageimage"
+  folder: "image"
+  region: "ap-southeast-1"
+#
+#paypal:
+#  client-id: AWeu_Nz3tSCL8DysVkAuTbjNZ5E1-ikXlz-nWhIWJfHNI_VW2KLz8DlzoTnP9QRkD38JNoNIT00nMsFU
+#  client-secret: ECEDoH92u7JVZPN2tyEpj6Uhtqnqf_Pam1YdkVn5CLr13xJn-qsMIKLj-RyalZSWWDEanL33AoLFPF4n
+#  mode: "sandbox"
+#
+#oauth2:
+#  client-id: "592415478461-cp190hot5uvnjc1v6p8k4gcp5u9pubbq.apps.googleusercontent.com"
+#  client-secret: "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"
+#  redirect_uri: "http://localhost:4200"
+
