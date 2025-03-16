@@ -2,7 +2,7 @@ package vn.xuanhung.ELearning_Service.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import vn.xuanhung.ELearning_Service.entity.UserInfo;
+import vn.xuanhung.ELearning_Service.entity.Discount;
 
-public interface UserInfoRepository extends JpaRepository<UserInfo, Integer>, JpaSpecificationExecutor<UserInfo>{
+public interface DiscountRepository extends JpaRepository<Discount, Integer>, JpaSpecificationExecutor<Discount> {
 }
