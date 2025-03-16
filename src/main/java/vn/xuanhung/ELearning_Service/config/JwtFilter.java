@@ -39,6 +39,15 @@ public class JwtFilter extends OncePerRequestFilter {
         }
 
         //Các endpoint không cần ddi qua
+        if (request.getMethod().equalsIgnoreCase("GET")) {
+            for (String publicUrl : AppConstant.GET_URL_PUBLIC) {
+                if (request.getRequestURI().equalsIgnoreCase("/elearning-service" + publicUrl)) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
+            }
+        }
+
         if (request.getMethod().equalsIgnoreCase("POST")) {
             for (String publicUrl : AppConstant.URL_PUBLIC) {
                 if (request.getRequestURI().equalsIgnoreCase("/elearning-service" + publicUrl)) {

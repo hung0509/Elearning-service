@@ -30,6 +30,7 @@ public class IAuthenticationService implements AuthenticationService {
 
     @Override
     public AuthenticationResponse authenticate(AuthenticationRequest req) {
+        log.info("***Log authentication service - authenticate account***");
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(req.getUsername(), req.getPassword()));

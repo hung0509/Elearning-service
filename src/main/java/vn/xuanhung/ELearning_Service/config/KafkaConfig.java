@@ -2,12 +2,15 @@ package vn.xuanhung.ELearning_Service.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.annotation.EnableKafka;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.kafka.support.serializer.JsonSerializer;
 
@@ -40,7 +43,7 @@ public class KafkaConfig {
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
-        props.put(ProducerConfig.ACKS_CONFIG, "1");
+        props.put(ProducerConfig.ACKS_CONFIG, "all");
         props.put(ProducerConfig.RETRIES_CONFIG, 3);  // Retry if sending fails
         props.put(ProducerConfig.LINGER_MS_CONFIG, 1); // Batch messages for performance
         props.put(ProducerConfig.REQUEST_TIMEOUT_MS_CONFIG, 2000); // Request timeout in milliseconds
@@ -54,8 +57,8 @@ public class KafkaConfig {
         Map<String, Object> props = new HashMap<>();
 
         props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, hostname + ":" + port);
-        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringSerializer.class);
-        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonSerializer.class);
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
@@ -69,14 +72,15 @@ public class KafkaConfig {
         return new DefaultKafkaConsumerFactory<>(props);
     }
 
-    //Thiết lập số consumer đồng thời nhận topic
-//    @Bean
-//    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
-//        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
-//        factory.setConsumerFactory(consumerFactory());
-//        factory.setConcurrency(3); // Số lượng luồng để xử lý song song
-//        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL); // Để xác nhận thủ công
-//        return factory;
-//    }
+//    Thiết lập số consumer đồng thời nhận topic
+    @Bean
+    public ConcurrentKafkaListenerContainerFactory<String, Object> kafkaListenerContainerFactory() {
+        ConcurrentKafkaListenerContainerFactory<String, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
+        factory.setConsumerFactory(consumerFactory());
+        factory.setConcurrency(3); // Số lượng luồng để xử lý song song
+        factory.getContainerProperties().setMissingTopicsFatal(false);
+        factory.getContainerProperties().setAckMode(ContainerProperties.AckMode.MANUAL); // Để xác nhận thủ công
+        return factory;
+    }
 
 }

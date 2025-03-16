@@ -1,15 +1,20 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.event.TransactionPhase;
+import org.springframework.transaction.event.TransactionalEventListener;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
-import vn.xuanhung.ELearning_Service.dto.request.CreateAccountRequest;
+import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.AccountResponse;
 import vn.xuanhung.ELearning_Service.entity.Account;
 import vn.xuanhung.ELearning_Service.entity.Role;
@@ -18,6 +23,7 @@ import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.repository.AccountRepository;
 import vn.xuanhung.ELearning_Service.repository.RoleReposiroty;
+import vn.xuanhung.ELearning_Service.repository.UserInfoRepository;
 import vn.xuanhung.ELearning_Service.service.AccountService;
 
 import java.util.List;
@@ -28,8 +34,12 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class IAccountService implements AccountService {
     AccountRepository accountRepository;
+    UserInfoRepository userInfoRepository;
     RoleReposiroty roleReposiroty;
     ModelMapper modelMapper;
+    MailService mailService;
+    PasswordEncoder passwordEncoder;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @Override
     public ApiResponsePagination<List<AccountResponse>> findAll(CreateAccountRequest request) {
@@ -42,6 +52,8 @@ public class IAccountService implements AccountService {
     }
 
     @Override
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
+    @Transactional
     public ApiResponse<AccountResponse> save(CreateAccountRequest req) {
         log.info("***Log account service - save account***");
         Account account = modelMapper.map(req, Account.class);
@@ -62,10 +74,32 @@ public class IAccountService implements AccountService {
                 .firstName(req.getFirstName())
                 .lastName(req.getLastName())
                 .email(req.getEmail())
+                .phone(req.getPhone())
                 .build();
+        userInfo = userInfoRepository.saveAndFlush(userInfo);
 
-        account.setIsActive("Y");
+        account.setPassword(passwordEncoder.encode(req.getPassword()));
+        account.setIsActive("N");
+        account.setUserId(userInfo.getId());
         account = accountRepository.save(account);
+
+        MailContentRequest mailContentRequest = MailContentRequest.builder()
+                .to(userInfo.getLastName() + " " + userInfo.getFirstName())
+                .title("Welcome new members")
+                .userId(userInfo.getId())
+                .build();
+        String fromMail = mailService.formGetActiveAccount(mailContentRequest);
+        MailRequest mailRequest = MailRequest.builder()
+                .toEmail(req.getEmail())
+                .subject("Confirm account activation")
+                .htmlContent(fromMail)
+                .build();
+        try {
+            kafkaTemplate.send(AppConstant.Topic.EMAIL_TOPIC, mailRequest).get();
+            log.info("Kafka send");
+        }catch (Exception e){
+            e.printStackTrace();
+        }
         return ApiResponse.<AccountResponse>builder()
                 .result(modelMapper.map(account, AccountResponse.class))
                 .build();
@@ -74,5 +108,21 @@ public class IAccountService implements AccountService {
     @Override
     public ApiResponse<String> deleteById(Integer integer) {
         return null;
+    }
+
+    @Override
+    public ApiResponse<AccountResponse> update(UpdateAccountRequest request) {
+        return null;
+    }
+
+    @Override
+    public ApiResponse<AccountResponse> active(Integer id) {
+        Account account = accountRepository.findById(id)
+                .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+        account.setIsActive("Y");
+        account = accountRepository.save(account);
+        return ApiResponse.<AccountResponse>builder()
+                .result(modelMapper.map(account, AccountResponse.class))
+                .build();
     }
 }

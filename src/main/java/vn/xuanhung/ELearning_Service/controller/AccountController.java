@@ -4,10 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.dto.request.CreateAccountRequest;
 import vn.xuanhung.ELearning_Service.dto.response.AccountResponse;
@@ -22,8 +19,14 @@ public class AccountController {
     AccountService accountService;
 
     @PostMapping
-    public ApiResponse<AccountResponse> addPermission(@RequestBody CreateAccountRequest req) {
+    public ApiResponse<AccountResponse> addAccount(@RequestBody CreateAccountRequest req) {
         log.info("Log controller account - save account");
         return accountService.save(req);
+    }
+
+    @GetMapping("/active/{id}")
+    public ApiResponse<AccountResponse> active(@PathVariable Integer id) {
+        log.info("Log controller account - change status account is active");
+        return accountService.active(id);
     }
 }

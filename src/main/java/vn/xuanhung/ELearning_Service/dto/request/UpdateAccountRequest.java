@@ -1,5 +1,4 @@
-package vn.xuanhung.ELearning_Service.dto.response;
-
+package vn.xuanhung.ELearning_Service.dto.request;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -13,15 +12,9 @@ import org.joda.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class AccountResponse{
-    Integer accountId;
-    Integer userId;
-    RoleResponse role;
-    String username;
+public class UpdateAccountRequest {
     String password;
     String isActive;
     String token;
     LocalDateTime expiresAt;
-    LocalDateTime createdAt;
-    LocalDateTime updatedAt;
 }

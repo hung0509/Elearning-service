@@ -5,10 +5,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.joda.time.DateTime;
-import vn.xuanhung.ELearning_Service.common.AbstractMappedEntity;
+import org.joda.time.LocalDateTime;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
-import java.util.Set;
+import java.util.Date;
 
 @Entity
 @Slf4j
@@ -33,14 +33,14 @@ public class Account extends AbstractMappedEntity {
     @Column(name = "password")
     String password;
 
-    @Column(name = "is_active", columnDefinition = "Y")
+    @Column(name = "is_active")
     String isActive;
 
     @Column(name = "token")
     String token;
 
     @Column(name = "expires_at")
-    DateTime expiresAt;
+    Date expiresAt;
 
     @JsonManagedReference
     @OneToOne

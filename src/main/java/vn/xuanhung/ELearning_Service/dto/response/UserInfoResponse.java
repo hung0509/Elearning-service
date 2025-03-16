@@ -1,11 +1,8 @@
-package vn.xuanhung.ELearning_Service.dto.request;
-
+package vn.xuanhung.ELearning_Service.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.joda.time.DateTime;
-import vn.xuanhung.ELearning_Service.common.BaseRequest;
 
 @Slf4j
 @Data
@@ -13,14 +10,8 @@ import vn.xuanhung.ELearning_Service.common.BaseRequest;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CreateAccountRequest extends BaseRequest {
-    Integer accountId;
-    String role;
-    String username;
-    String password;
-    String isActive;
-    String token;
-    DateTime expiresAt;
+public class UserInfoResponse {
+    Integer id;
     String firstName;
     String lastName;
     String gender;

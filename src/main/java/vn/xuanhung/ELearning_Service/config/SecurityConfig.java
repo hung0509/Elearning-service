@@ -14,6 +14,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -45,6 +46,7 @@ public class SecurityConfig{
     public SecurityFilterChain securityFilterChain(HttpSecurity httpSecurity) throws Exception {
         httpSecurity.authorizeHttpRequests(request -> {
                     request.requestMatchers(HttpMethod.POST, AppConstant.URL_PUBLIC).permitAll()
+                            .requestMatchers(HttpMethod.GET, AppConstant.GET_URL_PUBLIC).permitAll()
                             .anyRequest().authenticated();
                 }
         );
@@ -53,26 +55,26 @@ public class SecurityConfig{
         httpSecurity.exceptionHandling(exception -> exception.authenticationEntryPoint(jwtAuthenticationEntryPoint));
         httpSecurity.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS));
         httpSecurity.addFilterBefore(this.jwtRequestFilter, UsernamePasswordAuthenticationFilter.class);
-        httpSecurity.oauth2ResourceServer(
-                oauth2 -> oauth2.jwt(
-                                jwtConfigurer -> jwtConfigurer.decoder(customeJWTDecoder())// custom decode jwt
-                                        .jwtAuthenticationConverter(jwtAuthenticationConverter())// custom prefix
-                        )
-                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)// custom error 401
-        );
+//        httpSecurity.oauth2ResourceServer(
+//                oauth2 -> oauth2.jwt(
+//                                jwtConfigurer -> jwtConfigurer.decoder(customeJWTDecoder())// custom decode jwt
+//                                        .jwtAuthenticationConverter(jwtAuthenticationConverter())// custom prefix
+//                        )
+//                        .authenticationEntryPoint(jwtAuthenticationEntryPoint)// custom error 401
+//        );
         return httpSecurity.build();
     }
 
-    @Bean
-    JwtAuthenticationConverter jwtAuthenticationConverter(){
-        JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
-        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
-
-        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
-        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
-
-        return jwtAuthenticationConverter;
-    }
+//    @Bean
+//    JwtAuthenticationConverter jwtAuthenticationConverter(){
+//        JwtGrantedAuthoritiesConverter jwtGrantedAuthoritiesConverter = new JwtGrantedAuthoritiesConverter();
+//        jwtGrantedAuthoritiesConverter.setAuthorityPrefix("");
+//
+//        JwtAuthenticationConverter jwtAuthenticationConverter = new JwtAuthenticationConverter();
+//        jwtAuthenticationConverter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter);
+//
+//        return jwtAuthenticationConverter;
+//    }
 
     @Bean
     public CorsFilter corsFilter() {
@@ -96,13 +98,13 @@ public class SecurityConfig{
         return authenticationConfiguration.getAuthenticationManager();
     }
 
-    @Bean
-    JwtDecoder customeJWTDecoder(){
-        SecretKeySpec secretKeySpec = new SecretKeySpec(SIGNER_KEY.getBytes(), "HS512");
-        return NimbusJwtDecoder
-                .withSecretKey(secretKeySpec)
-                .macAlgorithm(MacAlgorithm.HS512)
-                .build();
-    }
+//    @Bean
+//    JwtDecoder customeJWTDecoder(){
+//        SecretKeySpec secretKeySpec = new SecretKeySpec(SIGNER_KEY.getBytes(), "HS512");
+//        return NimbusJwtDecoder
+//                .withSecretKey(secretKeySpec)
+//                .macAlgorithm(MacAlgorithm.HS512)
+//                .build();
+//    }
 
 }

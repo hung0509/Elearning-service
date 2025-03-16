@@ -20,6 +20,7 @@ import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.repository.InvalidatedTokenRepository;
 
+import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -44,7 +45,7 @@ public class JwtUtil {
     //Use extract claim
     public <T> T extractClaims(final String token, final Function<Claims, T> claimsResolver) {
         final Claims claims = Jwts.parser()
-                .setSigningKey(SIGNER_KEY) // Secret key for signing the JWT
+                .setSigningKey(SIGNER_KEY.getBytes(StandardCharsets.UTF_8))
                 .parseClaimsJws(token)
                 .getBody();
         return claimsResolver.apply(claims);

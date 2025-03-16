@@ -12,6 +12,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import vn.xuanhung.ELearning_Service.jwt.JwtUtil;
+import vn.xuanhung.ELearning_Service.jwt.UserDetailCustom;
 import vn.xuanhung.ELearning_Service.jwt.UserDetailServiceCustom;
 
 @Component
@@ -20,7 +21,6 @@ import vn.xuanhung.ELearning_Service.jwt.UserDetailServiceCustom;
 public class CustomAuthenticationProvider implements AuthenticationProvider {
     private final UserDetailServiceCustom userDetailsService;
     private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
 
     @Override
     public Authentication authenticate(Authentication authentication) throws AuthenticationException {
@@ -28,7 +28,12 @@ public class CustomAuthenticationProvider implements AuthenticationProvider {
         String username = authentication.getName();
         String password = authentication.getCredentials().toString();
 
-        UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+        log.info("username:" + username + ", password: " + password);
+
+        UserDetailCustom userDetails = (UserDetailCustom) userDetailsService.loadUserByUsername(username);
+
+        log.info("UserDetails password: " + userDetails.getPassword());
+
         if (userDetails == null || !passwordEncoder.matches(password, userDetails.getPassword())) {
             throw new BadCredentialsException("Bad credentials!");
         }

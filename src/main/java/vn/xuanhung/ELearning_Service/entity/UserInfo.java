@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import vn.xuanhung.ELearning_Service.common.AbstractMappedEntity;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+
+import java.math.BigDecimal;
 
 @Entity
 @Slf4j
@@ -18,7 +20,7 @@ import vn.xuanhung.ELearning_Service.common.AbstractMappedEntity;
 public class UserInfo extends AbstractMappedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_info_id",  nullable = false)
+    @Column(name = "user_info_id")
     Integer id;
 
     @Column(name = "first_name")
@@ -43,7 +45,7 @@ public class UserInfo extends AbstractMappedEntity {
     String phone;
 
     @Column(name = "balance")
-    String balance;
+    BigDecimal balance;
 
     @Column(name = "avatar")
     String avatar;

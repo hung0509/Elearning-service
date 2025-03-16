@@ -23,8 +23,6 @@ public class AuthenticationController {
     @PostMapping("/auth")
     public ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest req) {
         log.info("$---------Log authentication---------$");
-
-        log.info("Username:" + SecurityContextHolder.getContext().getAuthentication().getName());
         return ApiResponse.<AuthenticationResponse>builder()
                 .message("Authentication success")
                 .result(authenticationService.authenticate(req))

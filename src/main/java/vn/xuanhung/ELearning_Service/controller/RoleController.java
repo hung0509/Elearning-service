@@ -14,6 +14,7 @@ import vn.xuanhung.ELearning_Service.dto.response.RoleResponse;
 import vn.xuanhung.ELearning_Service.service.RoleService;
 
 import java.util.List;
+import java.util.concurrent.ExecutionException;
 
 @RestController
 @RequiredArgsConstructor
@@ -24,7 +25,7 @@ public class RoleController {
     RoleService roleService;
 
     @PostMapping
-    public ApiResponse<RoleResponse> addPermission(@RequestBody RoleRequest req) {
+    public ApiResponse<RoleResponse> addPermission(@RequestBody RoleRequest req) throws ExecutionException, InterruptedException {
         log.info("Log controller role - save role");
         return roleService.save(req);
     }
