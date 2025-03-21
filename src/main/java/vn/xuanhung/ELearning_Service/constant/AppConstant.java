@@ -8,6 +8,8 @@ public abstract class AppConstant {
             "accounts/active/**"
     };
 
+    public static final String STATUS_UNACTIVE = "N";
+    public static final String STATUS_ACTIVE = "Y";
 
     public static final class Role{
         public static final String ADMIN = "ADMIN";

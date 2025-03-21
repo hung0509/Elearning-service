@@ -25,6 +25,8 @@ public enum ErrorCode {
     ORDER_NOT_EXIST(1013, "Order not exist", HttpStatus.BAD_REQUEST),
     PAYMENT_CREATE_ERROR(1014, "Payment create error", HttpStatus.BAD_REQUEST),
     ARTICLE_NOT_EXIST(1015, "Payment create error", HttpStatus.BAD_REQUEST),
+    LESSON_NOT_EXIST(1016, "Lesson not exist", HttpStatus.BAD_REQUEST),
+    COURSE_NOT_EXIST(1017, "Course not exist", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_ENOUGH(1010, "Product not enough", HttpStatus.BAD_REQUEST),
     UNAUTHENTICATED(9999, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_VALID_FORMAT_IMAGE(2001, "This file is not image", HttpStatus.BAD_REQUEST),

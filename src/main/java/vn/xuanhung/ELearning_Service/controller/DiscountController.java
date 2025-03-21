@@ -34,7 +34,7 @@ public class DiscountController {
         return discountService.findAll(request);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping
     public ApiResponse<DiscountResponse> udpate(@RequestBody DiscountRequest request) {
         log.info("*Log controller discount - alert discount*");
         return discountService.update(request);
