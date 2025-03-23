@@ -107,7 +107,6 @@ public class ICourseService implements CourseService {
                 .build();
     }
 
-    // Mỗi hàm chỉ xử lý 1 chức năng
     @Override
     @Transactional
     public ApiResponse<CourseResponse> save(CourseRequest req) {
@@ -260,6 +259,4 @@ public class ICourseService implements CourseService {
             tempFile.delete();
         }
     }
-
-
 }

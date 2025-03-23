@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.event.TransactionPhase;
@@ -112,7 +113,22 @@ public class IAccountService implements AccountService {
 
     @Override
     public ApiResponse<AccountResponse> update(UpdateAccountRequest request) {
-        return null;
+        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+
+        if(username != null && !username.isEmpty()){
+            Account account = accountRepository.findByUsername(username);
+            if(account != null){
+                modelMapper.map(request, account);
+                account.setPassword(passwordEncoder.encode(request.getPassword()));
+
+                account = accountRepository.save(account);
+                return ApiResponse.<AccountResponse>builder()
+                        .message("Update successfully!")
+                        .result(modelMapper.map(account, AccountResponse.class))
+                        .build();
+            }
+        }
+        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     @Override

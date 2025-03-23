@@ -15,6 +15,8 @@ import java.math.BigDecimal;
 public class CourseHeaderViewResponse {
     Integer id;
     String courseName;
+    Integer instructorId;
+    String fullName;
     String description;
     String avatar;
     String trailer;
@@ -24,7 +26,6 @@ public class CourseHeaderViewResponse {
     BigDecimal quantity;
     String isActive;
     String level;
-    UserInfoResponse user;
     CertificateResponse certificate;
     DiscountResponse discount;
     CategoryResponse category;

@@ -21,9 +21,6 @@ public class CourseHeaderMapper extends BaseMapper<CourseHeaderView, CourseHeade
         modelMapper.addMappings(new PropertyMap<CourseHeaderView, CourseHeaderViewResponse>() {
             @Override
             protected void configure() {
-                map(source.getInstructorId(), destination.getUser().getId());
-                map(source.getFullName(), destination.getUser().getLastName());
-                map(source.getFullName(), destination.getUser().getFirstName());
                 map(source.getCertificateId(), destination.getCertificate().getId());
                 map(source.getCertificateName(), destination.getCertificate().getCertificateName());
                 map(source.getCategoryId(), destination.getCategory().getId());

@@ -4,6 +4,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.checkerframework.checker.units.qual.C;
+
+import java.math.BigDecimal;
+import java.util.Date;
 
 @Entity
 @Slf4j
@@ -13,19 +17,24 @@ import lombok.extern.slf4j.Slf4j;
 @Setter
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_user_lesson")
-public class UserLesson extends AbstractMappedEntity{
+@Table(name = "d_user_info")
+public class UserCourse extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "id")
     Integer id;
 
     @Column(name = "user_id")
     Integer userId;
 
-    @Column(name = "lesson_id")
-    Integer lessonId;
+    @Column(name = "course_id")
+    Integer courseId;
+
+    @Column(name = "enrollment_date")
+    Date enrollmentDate;
 
     @Column(name = "status")
-    String status;
+    String status; // REG, COM, conlai
+
+    @Column(name = "progression")
+    BigDecimal progression;
 }

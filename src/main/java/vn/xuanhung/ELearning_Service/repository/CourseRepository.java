@@ -7,4 +7,5 @@ import vn.xuanhung.ELearning_Service.entity.Course;
 
 @Repository
 public interface CourseRepository extends JpaRepository<Course, Integer>, JpaSpecificationExecutor<Course> {
+
 }
