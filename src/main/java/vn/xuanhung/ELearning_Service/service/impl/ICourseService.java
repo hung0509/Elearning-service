@@ -16,20 +16,30 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
+import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseResponse;
 import vn.xuanhung.ELearning_Service.entity.Certificate;
 import vn.xuanhung.ELearning_Service.entity.Course;
 import vn.xuanhung.ELearning_Service.entity.Discount;
 import vn.xuanhung.ELearning_Service.entity.Lesson;
+import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
+import vn.xuanhung.ELearning_Service.mapper.CourseHeaderMapper;
 import vn.xuanhung.ELearning_Service.repository.*;
 import vn.xuanhung.ELearning_Service.service.CourseService;
+import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -46,14 +56,19 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ICourseService implements CourseService {
     CourseRepository courseRepository;
-    ModelMapper modelMapper;
     UserInfoRepository userInfoRepository;
     CategoryRepository categoryRepository;
     DiscountRepository discountRepository;
     CertificateRepository certificateRepository;
+    LessonRepository lessonRepository;
+
+    CourseHeaderViewRepository courseHeaderViewRepository;
+
+    ModelMapper modelMapper;
+    CourseHeaderMapper courseHeaderMapper;
+
     AmazonS3 amazonS3;
     YouTube youtube;
-    private final LessonRepository lessonRepository;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -71,6 +86,25 @@ public class ICourseService implements CourseService {
     @Override
     public ApiResponse<CourseResponse> findById(Integer integer) {
         return null;
+    }
+
+    @Override
+    public ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(CourseHeaderViewRequest req) {
+        log.info("***Log course service - get header course ***");
+        Pageable pageable = PageRequest.of(
+                req.getPage(),
+                req.getPageSize(),
+                Sort.by(Sort.Direction.ASC, "createdAt")
+        );
+        Specification<CourseHeaderView> spec = CourseHeaderSpecification.getSpecification(req);
+
+        Page<CourseHeaderView> page = courseHeaderViewRepository.findAll(spec, pageable);
+        List<CourseHeaderView> list = page.getContent();
+
+
+        return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
+                .result(courseHeaderMapper.convertToDtoList(list))
+                .build();
     }
 
     // Mỗi hàm chỉ xử lý 1 chức năng
@@ -226,5 +260,6 @@ public class ICourseService implements CourseService {
             tempFile.delete();
         }
     }
+
 
 }
