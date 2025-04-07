@@ -59,7 +59,9 @@ public class IPermissionService implements PermissionService {
     @Transactional
     public ApiResponse<PermissionResponse> save(PermissionRequest req) {
         log.info("***Log permission service - save permission***");
+        log.info("{dto} :" + req);
         Permission permission = modelMapper.map(req, Permission.class);
+        log.info("{entity} :" + permission.getPermissionName());
 
         permission = permissionRepository.save(permission);
 

@@ -6,5 +6,5 @@ import vn.xuanhung.ELearning_Service.entity.UserCourse;
 
 @Repository
 public interface UserCourseRepository  extends JpaRepository<UserCourse, Integer> {
-    UserCourse findByCourseIdandUserId(int courseId, int userId);
+    UserCourse findByCourseIdAndUserId(int courseId, int userId);
 }

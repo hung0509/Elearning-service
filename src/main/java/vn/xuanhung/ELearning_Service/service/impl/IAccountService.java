@@ -68,7 +68,9 @@ public class IAccountService implements AccountService {
                 throw new AppException(ErrorCode.SYSTEM_ERROR);
             }
         }else{
-            throw new AppException(ErrorCode.NOT_ENOUGH_INFO);
+            Role role = roleReposiroty.findById(AppConstant.Role.USER)
+                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXIST));
+            account.setRole(role);
         }
 
         UserInfo userInfo = UserInfo.builder()

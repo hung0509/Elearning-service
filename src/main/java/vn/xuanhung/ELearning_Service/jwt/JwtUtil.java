@@ -55,6 +55,10 @@ public class JwtUtil {
         return this.extractClaims(token, Claims::getSubject);
     }
 
+    public String extractUuid(final String token) {
+        return this.extractClaims(token, Claims::getId);
+    }
+
     public Integer extractUserID(String token) {
         return Optional.ofNullable(this.extractClaims(token, claims -> claims.get("userId", Integer.class)))
                 .orElse(0);

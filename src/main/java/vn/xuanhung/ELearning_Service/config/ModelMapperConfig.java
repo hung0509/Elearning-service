@@ -14,7 +14,7 @@ public class ModelMapperConfig {
         ModelMapper modelMapper = new ModelMapper();
 
         modelMapper.getConfiguration()
-               // .setFieldMatchingEnabled(true)
+                .setFieldMatchingEnabled(true)
                 .setFieldAccessLevel(org.modelmapper.config.Configuration.AccessLevel.PRIVATE)
                 .setPropertyCondition(Conditions.isNotNull())
                 .setMatchingStrategy(MatchingStrategies.STRICT)

@@ -1,4 +1,4 @@
-package vn.xuanhung.ELearning_Service.repository;
+package vn.xuanhung.ELearning_Service.repository.view;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;

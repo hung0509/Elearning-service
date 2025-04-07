@@ -7,12 +7,13 @@ public abstract class AppConstant {
     public static final String INCOMPLETE = "UNCO";
     public static final String REGISTER = "REG";
     public static final String NOATTEND = "NOAT";
+    public static final String STATUS_PENDING = "PENDING";
 
     public static final String[] URL_PUBLIC = {
-            "/auth", "/accounts", "/permissions", "/roles"
+            "/auth", "/accounts", "/permissions", "/roles", "/auth/logout", "/auth/refresh"
     };
     public static final String[] GET_URL_PUBLIC = {
-            "accounts/active/**"
+            "/accounts/active/**", "/articles/**", "/courses/**"
     };
 
     public static final class Role{
@@ -24,5 +25,9 @@ public abstract class AppConstant {
         public static final String EMAIL_TOPIC = "email_topic";
     }
 
-
+    public static final class Level{
+        public static final String BEGINNER = "BEGINNER";
+        public static final String INTERMEDIATE = "INTERMEDIATE";
+        public static final String EXPERT = "EXPERT";
+    }
 }

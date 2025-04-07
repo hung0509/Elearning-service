@@ -34,6 +34,8 @@ public enum ErrorCode {
     EXISTED_EMAIL(4002, "Email already existed", HttpStatus.BAD_REQUEST),
     LINK_EXPIRE(8888, "Link eprired", HttpStatus.BAD_REQUEST),
     DECODE_NOT_AVAILABLE(8887, "Decode not available", HttpStatus.BAD_REQUEST),
+    ERROR_SQL(1234, "Have one error", HttpStatus.BAD_REQUEST),
+    ERROR_UPLOAD(1235, "Have one error in upload", HttpStatus.BAD_REQUEST)
     ;
 
     int code;

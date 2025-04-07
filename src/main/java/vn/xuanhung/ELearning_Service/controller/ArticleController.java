@@ -8,8 +8,10 @@ import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
+import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.DiscountRequest;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
+import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.DiscountResponse;
 import vn.xuanhung.ELearning_Service.service.ArticleService;
 
@@ -24,7 +26,7 @@ public class ArticleController {
     ArticleService articleService;
 
     @PostMapping
-    public ApiResponse<ArticleResponse> save(@RequestBody ArticleRequest request) {
+    public ApiResponse<ArticleResponse> save(@ModelAttribute ArticleRequest request) {
         log.info("*Log controller article - save article*");
         return articleService.save(request);
     }
@@ -33,5 +35,11 @@ public class ArticleController {
     public ApiResponsePagination<List<ArticleResponse>> get(@ModelAttribute ArticleRequest request) {
         log.info("*Log controller article - get all article*");
         return articleService.findAll(request);
+    }
+
+    @GetMapping("/user")
+    public ApiResponsePagination<List<ArticleUserViewResponse>> getArticleUser(@ModelAttribute ArticleUserViewRequest req) {
+        log.info("*Log controller article - get all article(have info user)*");
+        return articleService.getArticleUserView(req);
     }
 }

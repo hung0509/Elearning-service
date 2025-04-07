@@ -1,11 +1,14 @@
 package vn.xuanhung.ELearning_Service.entity;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import org.joda.time.DateTime;
+
+import java.util.Date;
 
 @Entity
 @Builder
@@ -19,5 +22,6 @@ public class InvalidatedToken {
     @Id
     String id;
 
-    DateTime expireDate;
+    @Column(name = "expire_date")
+    Date expireDate;
 }

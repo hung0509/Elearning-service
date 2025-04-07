@@ -97,7 +97,7 @@ public class IUserInfoService implements UserInfoService {
             Course course = courseRepository.findById(lesson.getCourseId())
                     .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
 
-            UserCourse userCourse = userCourseRepository.findByCourseIdandUserId(lesson.getCourseId(), userId);
+            UserCourse userCourse = userCourseRepository.findByCourseIdAndUserId(lesson.getCourseId(), userId);
 
             Integer countLessonLearning = lessonRepository.countAllByCourseId(lesson.getCourseId()).intValue();
 

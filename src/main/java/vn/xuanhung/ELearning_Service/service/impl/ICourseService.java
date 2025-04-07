@@ -38,6 +38,7 @@ import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.mapper.CourseHeaderMapper;
 import vn.xuanhung.ELearning_Service.repository.*;
+import vn.xuanhung.ELearning_Service.repository.view.CourseHeaderViewRepository;
 import vn.xuanhung.ELearning_Service.service.CourseService;
 import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
@@ -47,7 +48,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
-import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -119,12 +119,15 @@ public class ICourseService implements CourseService {
             modelMapper.map(req, entitySave);
             entitySave.setPriceAfterReduce(setPriceAfterDiscount(req, entitySave));
         }else{
-            if(!categoryRepository.existsById(req.getCategoryId()) || !userInfoRepository.existsById(req.getInstructorId())){
+            if(!categoryRepository.existsById(req.getCategoryId())  ){
+                throw new AppException(ErrorCode.NOT_ENOUGH_INFO);
+            }
+
+            if(!userInfoRepository.existsById(req.getInstructorId())){
                 throw new AppException(ErrorCode.NOT_ENOUGH_INFO);
             }
 
             entitySave = modelMapper.map(req, Course.class);
-
 
             try {
                 entitySave.setAvatar(uploadImage(req.getAvatar()));
@@ -161,7 +164,8 @@ public class ICourseService implements CourseService {
 
                     lessonRepository.save(lesson1);
                 }catch (Exception e){
-                    e.printStackTrace();
+                    log.error("Error: {}", e.getMessage());
+                    throw new AppException(ErrorCode.SYSTEM_ERROR);
                 }
             });
         }

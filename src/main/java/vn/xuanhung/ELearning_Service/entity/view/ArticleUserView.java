@@ -1,9 +1,13 @@
-package vn.xuanhung.ELearning_Service.entity;
+package vn.xuanhung.ELearning_Service.entity.view;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.annotations.Immutable;
 
 import java.util.Date;
 
@@ -13,11 +17,11 @@ import java.util.Date;
 @NoArgsConstructor
 @Getter
 @Setter
+@Immutable
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_article")
-public class Article extends AbstractMappedEntity{
+@Table(name = "d_course_header_view")
+public class ArticleUserView {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "article_id")
     Integer id;
 
@@ -26,6 +30,9 @@ public class Article extends AbstractMappedEntity{
 
     @Column(name = "content")
     String content;
+
+    @Column(name = "description")
+    String description;
 
     @Column(name = "instructor_id")
     Integer instructorId;
@@ -39,6 +46,9 @@ public class Article extends AbstractMappedEntity{
     @Column(name = "image")
     String image;
 
-    @Column(name = "description")
-    String description;
+    @Column(name = "full_name")
+    String fullName;
+
+    @Column(name = "updated_at")
+    Date updatedAt;
 }

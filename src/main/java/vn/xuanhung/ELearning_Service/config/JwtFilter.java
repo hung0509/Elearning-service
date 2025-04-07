@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
+import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.jwt.JwtUtil;
@@ -33,6 +34,8 @@ public class JwtFilter extends OncePerRequestFilter {
         log.info("---Filter JWT authentication---");
         String origin = request.getHeader("Origin");
 
+        AntPathMatcher pathMatcher = new AntPathMatcher();
+
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
             response.setStatus(HttpServletResponse.SC_OK);
             return;
@@ -41,7 +44,7 @@ public class JwtFilter extends OncePerRequestFilter {
         //Các endpoint không cần ddi qua
         if (request.getMethod().equalsIgnoreCase("GET")) {
             for (String publicUrl : AppConstant.GET_URL_PUBLIC) {
-                if (request.getRequestURI().equalsIgnoreCase("/elearning-service" + publicUrl)) {
+                if (pathMatcher.match("/elearning-service" + publicUrl, request.getRequestURI())) {
                     filterChain.doFilter(request, response);
                     return;
                 }

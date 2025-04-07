@@ -16,6 +16,7 @@ import java.util.Date;
 public class ArticleResponse {
     Integer id;
     String title;
+    String description;
     String content;
     Integer instructorId;
     Date publishedDate;

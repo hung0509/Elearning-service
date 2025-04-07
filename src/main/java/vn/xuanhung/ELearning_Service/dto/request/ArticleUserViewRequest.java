@@ -3,10 +3,9 @@ package vn.xuanhung.ELearning_Service.dto.request;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.BaseRequest;
 
-import java.util.Date;
+import java.util.List;
 
 @Slf4j
 @Data
@@ -14,13 +13,8 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ArticleRequest extends BaseRequest {
+public class ArticleUserViewRequest extends BaseRequest {
     Integer id;
     String title;
-    String content;
-    String description;
-    MultipartFile image;
-    Integer instructorId;
-    Date publishedDate;
-    String status;
+    List<String> fullNames;
 }

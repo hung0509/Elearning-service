@@ -1,4 +1,4 @@
-package vn.xuanhung.ELearning_Service.dto.request;
+package vn.xuanhung.ELearning_Service.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -14,7 +14,7 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class ArticleRequest extends BaseRequest {
+public class ArticleUserViewResponse extends BaseRequest {
     Integer id;
     String title;
     String content;
@@ -23,4 +23,5 @@ public class ArticleRequest extends BaseRequest {
     Integer instructorId;
     Date publishedDate;
     String status;
+    String fullName;
 }
