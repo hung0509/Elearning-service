@@ -17,6 +17,7 @@ public class ArticleResponse {
     Integer id;
     String title;
     String description;
+    String image;
     String content;
     Integer instructorId;
     Date publishedDate;

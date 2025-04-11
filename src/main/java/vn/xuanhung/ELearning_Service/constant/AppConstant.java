@@ -23,6 +23,7 @@ public abstract class AppConstant {
 
     public static final class Topic{
         public static final String EMAIL_TOPIC = "email_topic";
+        public static final String VIDEO_TOPIC = "video_topic";
     }
 
     public static final class Level{

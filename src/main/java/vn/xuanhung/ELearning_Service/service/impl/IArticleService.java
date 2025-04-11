@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
+import org.jsoup.Jsoup;
+import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
@@ -19,7 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.common.Base64DecodedMultipartFile;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
+import vn.xuanhung.ELearning_Service.controller.CategoryController;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
@@ -35,9 +41,12 @@ import vn.xuanhung.ELearning_Service.service.ArticleService;
 import vn.xuanhung.ELearning_Service.specification.ArticleSpecification;
 import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Date;
 import java.util.List;
 
@@ -52,6 +61,7 @@ public class IArticleService implements ArticleService {
     ModelMapper modelMapper;
 
     AmazonS3 amazonS3;
+    private final CategoryController categoryController;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -107,7 +117,7 @@ public class IArticleService implements ArticleService {
     public ApiResponse<ArticleResponse> save(ArticleRequest req) {
         log.info("***Log article service - save article***");
         if(req.getInstructorId() != null){
-            Boolean check = articleUserRepository.existsById(req.getInstructorId());
+            boolean check = articleUserRepository.existsById(req.getInstructorId());
             if(check){
                 Article article = modelMapper.map(req, Article.class);
 
@@ -118,9 +128,9 @@ public class IArticleService implements ArticleService {
                     throw new AppException(ErrorCode.ERROR_SQL);
                 }
 
-                article.setContent(req.getContent().replaceAll("<img(.*?)>", "<img$1 />"));
                 article.setStatus(AppConstant.STATUS_PENDING);
                 article.setPublishedDate(new Date());
+                article.setContent(handleContentAndUploadImage(req.getContent()));
 
                 article = articleRepository.save(article);
 
@@ -169,5 +179,41 @@ public class IArticleService implements ArticleService {
         return url.toString();
     }
 
+    private MultipartFile base64ToMultipartFile(String base64) throws IOException {
+        String[] parts = base64.split(",");
+        String metaInfo = parts[0]; // data:image/png;base64
+        String base64Data = parts[1];
 
+        if(metaInfo.equals("data:image/png;base64")) {
+            String contentType = metaInfo.split(":")[1].split(";")[0];
+            byte[] data = Base64.getDecoder().decode(base64Data);
+
+            return new Base64DecodedMultipartFile(data, contentType, "image.png");
+        }
+        return null;
+    }
+
+    private String handleContentAndUploadImage(String content)  {
+        Document document = Jsoup.parse(content); // Parse HTML content
+        Elements imgElements = document.select("img"); // Lấy tất cả thẻ img
+
+        for (Element img : imgElements) {
+            String src = img.attr("src"); // Lấy src trong img
+            if (src.startsWith("data:image")) {
+                try {
+                    MultipartFile file = base64ToMultipartFile(src);
+
+                    if (file != null) {
+                        String urlUploaded = uploadImage(file); // upload cloud return url
+                        img.attr("src", urlUploaded); // replace src mới
+                    }
+                }catch (Exception e){
+                    log.error("Error: {}", e.getMessage());
+                    throw new AppException(ErrorCode.SYSTEM_ERROR);
+                }
+            }
+        }
+
+        return document.body().html();
+    }
 }

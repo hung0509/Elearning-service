@@ -35,7 +35,8 @@ public enum ErrorCode {
     LINK_EXPIRE(8888, "Link eprired", HttpStatus.BAD_REQUEST),
     DECODE_NOT_AVAILABLE(8887, "Decode not available", HttpStatus.BAD_REQUEST),
     ERROR_SQL(1234, "Have one error", HttpStatus.BAD_REQUEST),
-    ERROR_UPLOAD(1235, "Have one error in upload", HttpStatus.BAD_REQUEST)
+    ERROR_UPLOAD(1235, "Have one error in upload", HttpStatus.BAD_REQUEST),
+    UPLOAD_S3_FAIL(1236,"Have one error in S3", HttpStatus.BAD_REQUEST)
     ;
 
     int code;

@@ -1,13 +1,11 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
 import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.model.CannedAccessControlList;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.Video;
-import com.google.api.services.youtube.model.VideoSnippet;
-import com.google.api.services.youtube.model.VideoStatus;
+import com.google.api.services.youtube.model.*;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -21,12 +19,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
+import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseResponse;
 import vn.xuanhung.ELearning_Service.entity.Certificate;
@@ -42,13 +43,12 @@ import vn.xuanhung.ELearning_Service.repository.view.CourseHeaderViewRepository;
 import vn.xuanhung.ELearning_Service.service.CourseService;
 import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @Slf4j
@@ -68,7 +68,9 @@ public class ICourseService implements CourseService {
     CourseHeaderMapper courseHeaderMapper;
 
     AmazonS3 amazonS3;
-    YouTube youtube;
+    YouTube youTube;
+    KafkaTemplate<String, Object> kafkaTemplate;
+
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -131,7 +133,6 @@ public class ICourseService implements CourseService {
 
             try {
                 entitySave.setAvatar(uploadImage(req.getAvatar()));
-                entitySave.setTrailer(uploadVideo(req.getTrailer(), req.getCourseName(), req.getDescription()));
             }catch(Exception e){
                 e.printStackTrace();
             }
@@ -148,7 +149,20 @@ public class ICourseService implements CourseService {
             entitySave.setCertificateId(certificate.getId());
         }
 
-        entitySave = courseRepository.save(entitySave);
+        entitySave = courseRepository.saveAndFlush(entitySave);
+        String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
+        String playlistId = createPlaylist(entitySave.getCourseName(), entitySave.getDescription());
+
+        log.info("Send kafka upload video: {}", fileTemp);
+        kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                KafkaUploadVideoDto.builder()
+                        .s3Url(fileTemp)
+                        .courseId(entitySave.getId())
+                        .playlistId(playlistId)
+                        .title(entitySave.getCourseName())
+                        .description(entitySave.getDescription())
+                        .build());
+
         if(req.getLessons() != null && !req.getLessons().isEmpty()){
             Integer id = entitySave.getId();
             req.getLessons().forEach((lesson) -> {
@@ -157,12 +171,23 @@ public class ICourseService implements CourseService {
                             .courseId(id)
                             .lessonName(lesson.getLessonName())
                             .lessonTime(lesson.getLessonTime())
-                            .urlLesson(uploadVideo(lesson.getUrlLesson(), lesson.getLessonName(), lesson.getDescription()))
                             .isActive("Y")
                             .description(lesson.getDescription())
                             .build();
 
-                    lessonRepository.save(lesson1);
+                    lesson1 = lessonRepository.saveAndFlush(lesson1);
+
+                    String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
+
+                    log.info("Send kafka upload video: {}", fileTempLesson);
+                    kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                            KafkaUploadVideoDto.builder()
+                                    .s3Url(fileTempLesson)
+                                    .lessonId(lesson1.getId())
+                                    .playlistId(playlistId)
+                                    .title(lesson1.getLessonName())
+                                    .description(lesson1.getDescription())
+                                    .build());
                 }catch (Exception e){
                     log.error("Error: {}", e.getMessage());
                     throw new AppException(ErrorCode.SYSTEM_ERROR);
@@ -173,6 +198,23 @@ public class ICourseService implements CourseService {
         return ApiResponse.<CourseResponse>builder()
                 .result(modelMapper.map(entitySave, CourseResponse.class))
                 .build();
+    }
+
+    public String uploadTempFile(MultipartFile file) {
+        String key = "temp/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+
+        try (InputStream inputStream = file.getInputStream()) {
+            ObjectMetadata metadata = new ObjectMetadata();
+            metadata.setContentLength(file.getSize());
+            metadata.setContentType(file.getContentType());
+
+            amazonS3.putObject(new PutObjectRequest(AWS_BUCKET, key, inputStream, metadata)
+                    .withCannedAcl(CannedAccessControlList.Private)); // Private vì tạm
+
+            return key; // Trả về
+        } catch (IOException e) {
+            throw new AppException(ErrorCode.UPLOAD_S3_FAIL);
+        }
     }
 
     @Override
@@ -227,40 +269,27 @@ public class ICourseService implements CourseService {
         return url.toString();
     }
 
-    private String uploadVideo(MultipartFile filePath, String title, String description) throws Exception {
-        // Tạo Metadata cho video
-        Video video = new Video();
-
-        VideoStatus status = new VideoStatus();
-        status.setPrivacyStatus("public"); // Mặc định là public
-        video.setStatus(status);
-
-        VideoSnippet snippet = new VideoSnippet();
-        snippet.setTitle(title);
-        snippet.setDescription(description);
-        video.setSnippet(snippet);
-
-        // Lưu file tạm từ MultipartFile
-        File tempFile = File.createTempFile("upload", filePath.getOriginalFilename());
-        filePath.transferTo(tempFile);
-
-        // Chuẩn bị nội dung file để upload
-        InputStreamContent mediaContent = new InputStreamContent("video/*", new FileInputStream(tempFile));
-
+    private String createPlaylist(String title, String description) {
         try {
-            // Thực hiện upload video
-            YouTube.Videos.Insert request = youtube.videos()
-                    .insert("snippet,status", video, mediaContent);
-            Video response = request.execute();
+            PlaylistSnippet snippet = new PlaylistSnippet();
+            snippet.setTitle(title);
+            snippet.setDescription(description);
 
-            // Trả về URL video đã upload
-            System.out.println("Video uploaded successfully. Video ID: " + response.getId());
-            return "https://www.youtube.com/embed/" + response.getId();
-        } catch (Exception e) {
-            throw new RuntimeException("Error uploading video to YouTube", e);
-        } finally {
-            // Xóa file tạm
-            tempFile.delete();
+            PlaylistStatus status = new PlaylistStatus();
+            status.setPrivacyStatus("private"); // Hoặc private / unlisted tuỳ bạn
+
+            Playlist playlist = new Playlist();
+            playlist.setSnippet(snippet);
+            playlist.setStatus(status);
+
+            Playlist response = youTube.playlists()
+                    .insert("snippet,status", playlist)
+                    .execute();
+
+            return response.getId(); // Trả về Playlist Id
+        }catch (Exception e){
+            e.printStackTrace();
         }
+        return null;
     }
 }

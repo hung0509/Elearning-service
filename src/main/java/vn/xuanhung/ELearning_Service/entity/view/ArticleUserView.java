@@ -19,7 +19,7 @@ import java.util.Date;
 @Setter
 @Immutable
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_course_header_view")
+@Table(name = "d_article_use_view")
 public class ArticleUserView {
     @Id
     @Column(name = "article_id")

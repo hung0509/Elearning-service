@@ -19,7 +19,7 @@ public class ArticleUserViewResponse extends BaseRequest {
     String title;
     String content;
     String description;
-    MultipartFile image;
+    String image;
     Integer instructorId;
     Date publishedDate;
     String status;
