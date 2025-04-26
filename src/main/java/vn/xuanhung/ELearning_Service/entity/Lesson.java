@@ -39,4 +39,7 @@ public class Lesson extends AbstractMappedEntity{
 
     @Column(name = "is_active", columnDefinition = "Y")
     String isActive;
+
+    @Column(name = "playlist_id")
+    String playListId;
 }

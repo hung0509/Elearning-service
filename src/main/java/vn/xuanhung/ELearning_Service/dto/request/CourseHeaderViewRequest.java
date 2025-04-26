@@ -17,4 +17,5 @@ public class CourseHeaderViewRequest extends BaseRequest {
     Integer categoryId;
     String courseStatus;
     String level;
+    Integer userId;
 }

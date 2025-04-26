@@ -15,7 +15,7 @@ import java.math.BigDecimal;
 public class LessonResponse {
     Integer id;
     Integer courseId;
-    Integer lessonName;
+    String lessonName;
     String urlLesson;
     String description;
     BigDecimal lessonTime;

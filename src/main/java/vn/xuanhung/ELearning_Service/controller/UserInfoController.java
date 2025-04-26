@@ -6,9 +6,13 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
+import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.common.BaseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserCourseRequest;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.service.UserInfoService;
+
+import java.util.List;
 
 @RestController
 @RequiredArgsConstructor
@@ -17,6 +21,12 @@ import vn.xuanhung.ELearning_Service.service.UserInfoService;
 @FieldDefaults(makeFinal = true, level = AccessLevel.PRIVATE)
 public class UserInfoController {
     UserInfoService userInfoService;
+
+    @GetMapping("/all")
+    public ApiResponsePagination<List<UserInfoResponse>> getAllUsers(@ModelAttribute BaseRequest req) {
+        log.info("Log user controller - get all account");
+        return userInfoService.getAll(req);
+    }
 
     @GetMapping
     public ApiResponse<UserInfoResponse> getUserInfo() {

@@ -22,10 +22,10 @@ import java.util.Date;
 @Immutable
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_course_header_view")
-public class CourseHeaderView extends AbstractMappedEntity {
+public class CourseHeaderView {
     @Id
     @Column(name = "course_id")
-    Integer courseId;
+    Integer id;
 
     @Column(name = "course_name")
     String courseName;
@@ -83,4 +83,7 @@ public class CourseHeaderView extends AbstractMappedEntity {
 
     @Column(name = "created_at")
     Date createdAt;
+
+    @Column(name = "user_avatar")
+    String userAvatar;
 }

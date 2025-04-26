@@ -14,6 +14,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
+import org.springframework.stereotype.Service;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
 import vn.xuanhung.ELearning_Service.entity.Course;
@@ -24,7 +25,10 @@ import vn.xuanhung.ELearning_Service.repository.CourseRepository;
 import vn.xuanhung.ELearning_Service.repository.LessonRepository;
 
 import java.io.*;
+import java.math.BigDecimal;
+import java.util.List;
 
+@Service
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 @Slf4j
@@ -37,9 +41,64 @@ public class IProcessKafkaService {
     @Value("${aws.bucket}")
     String AWS_BUCKET;
 
-    @NonFinal
-    @Value("${aws.folder}")
-    String AWS_FOLDER;
+//    @KafkaListener(topics = AppConstant.Topic.VIDEO_TOPIC, groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory")
+//    private void uploadVideoAtYoutube(ConsumerRecord<String, KafkaUploadVideoDto> consumerRecord, Acknowledgment acknowledgment) throws Exception {
+//        // Tạo Metadata cho video
+//        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.VIDEO_TOPIC);
+//
+//        // Extract key and value from the ConsumerRecord
+//        String key = consumerRecord.key(); // could be null
+//        KafkaUploadVideoDto kafkaUploadVideoDto = consumerRecord.value();
+//        log.info("Received message with key: " + key);
+//        log.info("Received message with value: " + kafkaUploadVideoDto);
+//
+//        InputStreamContent mediaContent = new InputStreamContent(
+//                kafkaUploadVideoDto.getVideo().getContentType(), // ví dụ: video/mp4
+//                new BufferedInputStream( kafkaUploadVideoDto.getVideo().getInputStream())
+//        );
+//        mediaContent.setLength(kafkaUploadVideoDto.getVideo().getSize());
+//        try {
+//            Video video = new Video();
+//
+//            VideoStatus status = new VideoStatus();
+//            status.setPrivacyStatus("private"); // Mặc định là public
+//            video.setStatus(status);
+//
+//            VideoSnippet snippet = new VideoSnippet();
+//            snippet.setTitle(kafkaUploadVideoDto.getTitle());
+//            snippet.setDescription(kafkaUploadVideoDto.getDescription());
+//            video.setSnippet(snippet);
+//
+//            // Thực hiện upload video
+//            YouTube.Videos.Insert request = youtube.videos()
+//                    .insert("snippet,status", video, mediaContent);
+//            Video response = request.execute();
+//
+//            // Trả về URL video đã upload
+//            System.out.println("Video uploaded successfully. Video ID: " + response.getId());
+//            String url =  "https://www.youtube.com/embed/" + response.getId();
+//
+//            addVideoToPlaylist(kafkaUploadVideoDto.getPlaylistId(), response.getId());
+//
+//            if(kafkaUploadVideoDto.getCourseId() != null){
+//                Course course = courseRepository.findById(kafkaUploadVideoDto.getCourseId())
+//                        .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+//                course.setTrailer(url);
+//                course.setPlayListId(kafkaUploadVideoDto.getPlaylistId());
+//                courseRepository.save(course);
+//            }else if(kafkaUploadVideoDto.getLessonId() != null){
+//                Lesson lesson = lessonRepository.findById(kafkaUploadVideoDto.getLessonId())
+//                        .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_EXIST));
+//                lesson.setUrlLesson(url);
+//                lesson.setPlayListId(kafkaUploadVideoDto.getPlaylistId());
+//                lessonRepository.save(lesson);
+//            }
+//
+//            acknowledgment.acknowledge();
+//        } catch (Exception e) {
+//            throw new RuntimeException("Error uploading video to YouTube", e);
+//        }
+//    }
 
 
     @KafkaListener(topics = AppConstant.Topic.VIDEO_TOPIC, groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory")
@@ -52,7 +111,11 @@ public class IProcessKafkaService {
         KafkaUploadVideoDto kafkaUploadVideoDto = consumerRecord.value();
         log.info("Received message with key: " + key);
         log.info("Received message with value: " + kafkaUploadVideoDto);
-        File temFile = downloadS3ObjectToTempFile(kafkaUploadVideoDto.getS3Url());
+        S3Object s3Object = amazonS3.getObject(AWS_BUCKET, kafkaUploadVideoDto.getS3Url());
+        InputStream inputStream = s3Object.getObjectContent();
+
+        InputStreamContent mediaContent = new InputStreamContent("video/*", inputStream);
+        mediaContent.setLength(s3Object.getObjectMetadata().getContentLength());
         try {
             Video video = new Video();
 
@@ -64,10 +127,6 @@ public class IProcessKafkaService {
             snippet.setTitle(kafkaUploadVideoDto.getTitle());
             snippet.setDescription(kafkaUploadVideoDto.getDescription());
             video.setSnippet(snippet);
-
-
-            // Chuẩn bị nội dung file để upload
-            InputStreamContent mediaContent = new InputStreamContent("video/*", new FileInputStream(temFile));
 
             // Thực hiện upload video
             YouTube.Videos.Insert request = youtube.videos()
@@ -84,11 +143,14 @@ public class IProcessKafkaService {
                 Course course = courseRepository.findById(kafkaUploadVideoDto.getCourseId())
                         .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
                 course.setTrailer(url);
+                course.setPlayListId(kafkaUploadVideoDto.getPlaylistId());
+                course.setCourseDuration(getCourseDuration(kafkaUploadVideoDto.getCourseId()));
                 courseRepository.save(course);
             }else if(kafkaUploadVideoDto.getLessonId() != null){
                 Lesson lesson = lessonRepository.findById(kafkaUploadVideoDto.getLessonId())
                         .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_EXIST));
                 lesson.setUrlLesson(url);
+                lesson.setPlayListId(kafkaUploadVideoDto.getPlaylistId());
                 lessonRepository.save(lesson);
             }
 
@@ -96,26 +158,8 @@ public class IProcessKafkaService {
        } catch (Exception e) {
             throw new RuntimeException("Error uploading video to YouTube", e);
        } finally {
-            if(temFile != null && temFile.exists()){
-                temFile.delete();
-            }
             amazonS3.deleteObject(AWS_BUCKET, kafkaUploadVideoDto.getS3Url());
         }
-    }
-
-    private File downloadS3ObjectToTempFile(String s3Key) throws IOException {
-        S3Object s3Object = amazonS3.getObject(AWS_BUCKET, s3Key);
-        InputStream inputStream = s3Object.getObjectContent();
-
-        File tempFile = File.createTempFile("temp-video-", ".mp4");
-        try (OutputStream outputStream = new FileOutputStream(tempFile)) {
-            byte[] buffer = new byte[1024];
-            int bytesRead;
-            while ((bytesRead = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, bytesRead);
-            }
-        }
-        return tempFile;
     }
 
     public void addVideoToPlaylist(String playlistId, String videoId) {
@@ -136,6 +180,19 @@ public class IProcessKafkaService {
         } catch (Exception e) {
             throw new RuntimeException("Error add video to playlist", e);
         }
+    }
+
+    private BigDecimal getCourseDuration(Integer courseId){
+        List<Lesson> lessons = lessonRepository.findAllByCourseId(courseId);
+
+        BigDecimal courseDuration = BigDecimal.ZERO;
+        if(!lessons.isEmpty()){
+            for(Lesson lesson: lessons) {
+                courseDuration = courseDuration.add(lesson.getLessonTime());
+            }
+        }
+
+        return courseDuration;
     }
 
 }

@@ -14,6 +14,13 @@ public class ArticleUserViewSpecification {
                         : criteriaBuilder.like(criteriaBuilder.lower(root.get("title")), "%" + title + "%");
     }
 
+    public static Specification<ArticleUserView> isStatus(String status)
+    {
+        return (root, query, criteriaBuilder) ->
+                status == null ? criteriaBuilder.conjunction()
+                        : criteriaBuilder.like(criteriaBuilder.lower(root.get("isStatus")),  status );
+    }
+
     public static Specification<ArticleUserView> isFullNameIn(List<String> fullNames) {
         return (root, query, criteriaBuilder) -> {
             if (fullNames == null || fullNames.isEmpty()) {
@@ -31,9 +38,18 @@ public class ArticleUserViewSpecification {
                         : criteriaBuilder.equal(root.get("id"), articleId );
     }
 
+    public static Specification<ArticleUserView> isInstructorId(Integer instructorId)
+    {
+        return (root, query, criteriaBuilder) ->
+                instructorId == null ? criteriaBuilder.conjunction()
+                        : criteriaBuilder.equal(root.get("instructorId"), instructorId );
+    }
+
     public static Specification<ArticleUserView> getSpecification(ArticleUserViewRequest req) {
         Specification<ArticleUserView> spec = Specification.where(isTitle(req.getTitle()))
+                .and(isStatus(req.getStatus()))
                 .and(isFullNameIn(req.getFullNames()))
+                .and(isInstructorId(req.getInstructorId()))
                 .and(isArticleId(req.getId())
                 );
         return spec;

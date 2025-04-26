@@ -48,7 +48,7 @@ public class Course extends AbstractMappedEntity{
     @Column(name = "course_duration")
     BigDecimal courseDuration;
 
-    @Column(name = "quatity")
+    @Column(name = "quantity")
     BigDecimal quantity;
 
     @Column(name = "discount_id")
@@ -62,4 +62,7 @@ public class Course extends AbstractMappedEntity{
 
     @Column(name = "level")
     String level;
+
+    @Column(name = "playlist_id")
+    String playListId;
 }

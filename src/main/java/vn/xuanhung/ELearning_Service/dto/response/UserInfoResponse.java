@@ -4,6 +4,9 @@ import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Date;
+import java.util.List;
+
 @Slf4j
 @Data
 @Builder
@@ -21,4 +24,7 @@ public class UserInfoResponse {
     String phone;
     String balance;
     String avatar;
+    Date createdAt;
+    List<CourseHeaderViewResponse> courses;
+    List<ArticleUserViewResponse> articles;
 }

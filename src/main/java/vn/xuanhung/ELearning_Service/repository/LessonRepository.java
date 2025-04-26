@@ -12,4 +12,6 @@ public interface LessonRepository extends JpaRepository<Lesson, Integer>, JpaSpe
     List<Lesson> findAllByCourseId(int courseId);
 
     Number countAllByCourseId(int courseId);
+
+
  }

@@ -19,7 +19,7 @@ public class ArticleSpecification {
     {
         return (root, query, criteriaBuilder) ->
                 status == null ? criteriaBuilder.conjunction()
-                        : criteriaBuilder.like(root.get("status"),status);
+                        : criteriaBuilder.like(root.get("status"), status);
     }
 
     public static Specification<Article> instructorId(Integer instructorId)
@@ -32,7 +32,6 @@ public class ArticleSpecification {
     public static Specification<Article> getSpecification(ArticleRequest req) {
         Specification<Article> spec = Specification.where(isTitle(req.getTitle()))
                 .and(isStatus(req.getStatus()))
-
                 .and(instructorId(req.getInstructorId()));
         return spec;
 

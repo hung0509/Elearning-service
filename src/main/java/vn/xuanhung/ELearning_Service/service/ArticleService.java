@@ -1,5 +1,6 @@
 package vn.xuanhung.ELearning_Service.service;
 
+import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.BaseServiceGeneric;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
@@ -11,4 +12,6 @@ import java.util.List;
 
 public interface ArticleService extends BaseServiceGeneric<Integer, ArticleRequest, ArticleResponse> {
     public ApiResponsePagination<List<ArticleUserViewResponse>> getArticleUserView(ArticleUserViewRequest articleRequest);
+
+    public ApiResponse<ArticleResponse> updateArticle(ArticleRequest articleRequest);
 }

@@ -1,11 +1,13 @@
 package vn.xuanhung.ELearning_Service.dto.response;
 
+import jakarta.persistence.Column;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 
 import java.math.BigDecimal;
 import java.util.Date;
+import java.util.List;
 
 @Slf4j
 @Data
@@ -13,16 +15,12 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class CourseHeaderViewResponse {
+public class CourseDetailViewResponse {
     Integer id;
     String courseName;
-    Integer instructorId;
-    String fullName;
     String description;
     String avatar;
-    String userAvatar;;
     String trailer;
-    String courseStatus;
     BigDecimal priceEntered;
     BigDecimal priceAfterReduce;
     BigDecimal courseDuration;
@@ -30,7 +28,6 @@ public class CourseHeaderViewResponse {
     String isActive;
     String level;
     Date createdAt;
-    CertificateResponse certificate;
-    DiscountResponse discount;
-    CategoryResponse category;
+    Boolean isRegister;
+    List<LessonResponse> lessons;
 }

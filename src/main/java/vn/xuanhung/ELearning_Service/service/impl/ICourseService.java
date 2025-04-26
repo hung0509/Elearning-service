@@ -6,6 +6,8 @@ import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -19,17 +21,22 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.common.ParseHelper;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
+import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
+import vn.xuanhung.ELearning_Service.dto.response.CourseDetailViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseResponse;
+import vn.xuanhung.ELearning_Service.dto.response.LessonResponse;
 import vn.xuanhung.ELearning_Service.entity.Certificate;
 import vn.xuanhung.ELearning_Service.entity.Course;
 import vn.xuanhung.ELearning_Service.entity.Discount;
@@ -47,7 +54,9 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -56,6 +65,7 @@ import java.util.UUID;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ICourseService implements CourseService {
     CourseRepository courseRepository;
+    UserCourseRepository userCourseRepository;
     UserInfoRepository userInfoRepository;
     CategoryRepository categoryRepository;
     DiscountRepository discountRepository;
@@ -66,6 +76,8 @@ public class ICourseService implements CourseService {
 
     ModelMapper modelMapper;
     CourseHeaderMapper courseHeaderMapper;
+   // EntityManager entityManager;
+    JdbcTemplate jdbcTemplate;
 
     AmazonS3 amazonS3;
     YouTube youTube;
@@ -96,7 +108,7 @@ public class ICourseService implements CourseService {
         Pageable pageable = PageRequest.of(
                 req.getPage(),
                 req.getPageSize(),
-                Sort.by(Sort.Direction.ASC, "createdAt")
+                Sort.by(Sort.Direction.DESC, "createdAt")
         );
         Specification<CourseHeaderView> spec = CourseHeaderSpecification.getSpecification(req);
 
@@ -106,7 +118,71 @@ public class ICourseService implements CourseService {
 
         return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
                 .result(courseHeaderMapper.convertToDtoList(list))
+                .pageSize(req.getPageSize())
+                .totalPages(page.getTotalPages())
+                .currentPage(req.getPage())
+                .totalItems(page.getTotalElements())
                 .build();
+    }
+
+    @Override
+    public ApiResponse<CourseDetailViewResponse> getCourseDetail(CourseDetailViewRequest req) {
+        log.info("***Log course service - get detail course ***");
+        if(req.getCourseId() != null){
+            Course course = courseRepository.findById(req.getCourseId())
+                    .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+            List<Lesson> lessons = lessonRepository.findAllByCourseId(req.getCourseId());
+
+            List<LessonResponse> lessonResponses = lessons.stream()
+                    .map((item) -> modelMapper.map(item, LessonResponse.class)).toList();
+            CourseDetailViewResponse courseDetailViewResponse =  CourseDetailViewResponse.builder()
+                    .id(course.getId())
+                    .courseName(course.getCourseName())
+                    .description(course.getDescription())
+                    .courseDuration(course.getCourseDuration())
+                    .quantity(course.getQuantity())
+                    .createdAt(course.getCreatedAt())
+                    .avatar(course.getAvatar())
+                    .trailer(course.getTrailer())
+                    .level(course.getLevel())
+                    .lessons(lessonResponses)
+                    .build();
+
+            Boolean check = userCourseRepository.existsByCourseIdAndUserId(req.getCourseId(), req.getUserId());
+            courseDetailViewResponse.setIsRegister(check);
+
+            return ApiResponse.<CourseDetailViewResponse>builder()
+                    .result(courseDetailViewResponse)
+                    .build();
+        }else
+            throw new AppException(ErrorCode.NOT_ENOUGH_INFO);
+    }
+
+    @Override
+    public ApiResponse<List<CourseHeaderViewResponse>> getCourseHeaderSpecial() {
+        log.info("***Log course service - get header course special***");
+        StringBuilder sql = new StringBuilder("SELECT* FROM d_course_special_view");
+
+        List<Map<String, Object>> result = jdbcTemplate.queryForList(sql.toString());
+        List<CourseHeaderViewResponse> data = new ArrayList<>();
+        try{
+           for(Map<String, Object> rs : result){
+               CourseHeaderViewResponse courseHeaderViewRequest = CourseHeaderViewResponse.builder()
+                       .id(ParseHelper.INT.parse(rs.get("course_id")))
+                       .courseName(ParseHelper.STRING.parse(rs.get("course_name")))
+                       .description(ParseHelper.STRING.parse(rs.get("description")))
+                       .avatar(ParseHelper.STRING.parse(rs.get("avatar")))
+                       .build();
+               data.add(courseHeaderViewRequest);
+           }
+            return ApiResponse.<List<CourseHeaderViewResponse>>builder()
+                    .result(data)
+                    .build();
+        }catch (Exception e){
+            log.error("Error: {}", e.getMessage());
+            throw new AppException(ErrorCode.SYSTEM_ERROR);
+        }
     }
 
     @Override
@@ -149,6 +225,7 @@ public class ICourseService implements CourseService {
             entitySave.setCertificateId(certificate.getId());
         }
 
+        entitySave.setIsActive("Y");
         entitySave = courseRepository.saveAndFlush(entitySave);
         String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
         String playlistId = createPlaylist(entitySave.getCourseName(), entitySave.getDescription());
@@ -157,6 +234,7 @@ public class ICourseService implements CourseService {
         kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
                 KafkaUploadVideoDto.builder()
                         .s3Url(fileTemp)
+//                        .video(req.getTrailer())
                         .courseId(entitySave.getId())
                         .playlistId(playlistId)
                         .title(entitySave.getCourseName())
@@ -178,11 +256,11 @@ public class ICourseService implements CourseService {
                     lesson1 = lessonRepository.saveAndFlush(lesson1);
 
                     String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
-
                     log.info("Send kafka upload video: {}", fileTempLesson);
                     kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
                             KafkaUploadVideoDto.builder()
                                     .s3Url(fileTempLesson)
+//                                    .video(lesson.getUrlLesson())
                                     .lessonId(lesson1.getId())
                                     .playlistId(playlistId)
                                     .title(lesson1.getLessonName())

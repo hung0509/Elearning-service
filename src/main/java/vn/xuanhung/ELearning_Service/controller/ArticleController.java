@@ -42,4 +42,10 @@ public class ArticleController {
         log.info("*Log controller article - get all article(have info user)*");
         return articleService.getArticleUserView(req);
     }
+
+    @PutMapping()
+    public ApiResponse<ArticleResponse> update(@ModelAttribute ArticleRequest request) {
+        log.info("*Log controller article - update article*");
+        return articleService.updateArticle(request);
+    }
 }

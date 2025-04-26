@@ -114,6 +114,20 @@ public class IArticleService implements ArticleService {
     }
 
     @Override
+    public ApiResponse<ArticleResponse> updateArticle(ArticleRequest req) {
+        log.info("***Log article service - update article***");
+        Article article = articleRepository.findById(req.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.ARTICLE_NOT_EXIST));
+
+        modelMapper.map(req, article);
+
+        article = articleRepository.save(article);
+        return ApiResponse.<ArticleResponse>builder()
+                .result(modelMapper.map(article , ArticleResponse.class))
+                .build();
+    }
+
+    @Override
     public ApiResponse<ArticleResponse> save(ArticleRequest req) {
         log.info("***Log article service - save article***");
         if(req.getInstructorId() != null){

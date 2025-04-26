@@ -19,7 +19,7 @@ import java.util.Date;
 @Setter
 @Immutable
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_article_use_view")
+@Table(name = "d_article_user_view")
 public class ArticleUserView {
     @Id
     @Column(name = "article_id")
@@ -49,6 +49,12 @@ public class ArticleUserView {
     @Column(name = "full_name")
     String fullName;
 
+    @Column(name = "avatar")
+    String avatar;
+
     @Column(name = "updated_at")
     Date updatedAt;
+
+    @Column(name = "created_at")
+    Date createdAt;
 }

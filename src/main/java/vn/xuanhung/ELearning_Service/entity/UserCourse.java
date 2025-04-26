@@ -17,7 +17,7 @@ import java.util.Date;
 @Setter
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_user_info")
+@Table(name = "d_user_course")
 public class UserCourse extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

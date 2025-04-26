@@ -7,4 +7,6 @@ import vn.xuanhung.ELearning_Service.entity.UserCourse;
 @Repository
 public interface UserCourseRepository  extends JpaRepository<UserCourse, Integer> {
     UserCourse findByCourseIdAndUserId(int courseId, int userId);
+
+    boolean existsByCourseIdAndUserId(int courseId, int userId);
 }

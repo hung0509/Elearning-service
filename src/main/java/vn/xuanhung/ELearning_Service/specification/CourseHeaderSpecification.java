@@ -28,6 +28,13 @@ public class CourseHeaderSpecification {
                         : criteriaBuilder.equal(root.get("categoryId"), id);
     }
 
+    public static Specification<CourseHeaderView> isUserId(Integer id)
+    {
+        return (root, query, criteriaBuilder) ->
+                id == null ? criteriaBuilder.conjunction()
+                        : criteriaBuilder.equal(root.get("instructorId"), id);
+    }
+
     public static Specification<CourseHeaderView> isStatus(String status)
     {
         return (root, query, criteriaBuilder) ->
@@ -45,6 +52,7 @@ public class CourseHeaderSpecification {
     public static Specification<CourseHeaderView> getSpecification(CourseHeaderViewRequest req) {
         Specification<CourseHeaderView> spec = Specification.where(likeCourseName(req.getCourseName()))
                 .and(isCourseId(req.getCourseId()))
+                .and(isUserId(req.getUserId()))
                 .and(isCategoryId(req.getCategoryId()))
                 .and(isStatus(req.getCourseStatus())
                 .and(isLevel(req.getLevel()))

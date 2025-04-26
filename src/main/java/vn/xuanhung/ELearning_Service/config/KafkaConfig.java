@@ -62,7 +62,7 @@ public class KafkaConfig {
         props.put(ConsumerConfig.GROUP_ID_CONFIG, groupId);
         props.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
-        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "latest"); // Start from beginning if no offset
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest"); // Start from beginning if no offset
         props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG, false); // Handle commits manually
         props.put(ConsumerConfig.MAX_POLL_RECORDS_CONFIG, 10); // Limit records per poll to avoid long processing
         props.put(ConsumerConfig.SESSION_TIMEOUT_MS_CONFIG, 15000); // Heartbeat session timeout
