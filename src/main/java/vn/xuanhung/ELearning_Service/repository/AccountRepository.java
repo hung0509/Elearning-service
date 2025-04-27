@@ -8,4 +8,6 @@ import vn.xuanhung.ELearning_Service.entity.Account;
 @Repository
 public interface AccountRepository extends JpaRepository<Account, Integer>, JpaSpecificationExecutor<Account> {
     Account findByUsername(String username);
+
+    Account findByUserId(Integer userId);
 }

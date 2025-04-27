@@ -9,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.dto.request.AuthenticationRequest;
 import vn.xuanhung.ELearning_Service.dto.request.IntrospectRequest;
+import vn.xuanhung.ELearning_Service.dto.request.OutboundRequest;
 import vn.xuanhung.ELearning_Service.dto.response.AuthenticationResponse;
 import vn.xuanhung.ELearning_Service.service.AuthenticationService;
 
@@ -19,6 +20,15 @@ import vn.xuanhung.ELearning_Service.service.AuthenticationService;
 @RequestMapping("/auth")
 public class AuthenticationController {
     AuthenticationService authenticationService;
+
+    @PostMapping("/outbound/authentication")
+    ApiResponse<AuthenticationResponse> outboundAuthenticate(@RequestBody OutboundRequest request){
+        log.info("$---------Log authentication auth by google---------$");
+        var result = authenticationService.outboundAuthentication(request.getCode());
+        return ApiResponse.<AuthenticationResponse>builder()
+                .result(result)
+                .build();
+    }
 
     @PostMapping
     public ApiResponse<AuthenticationResponse> authenticate(@RequestBody AuthenticationRequest req) {

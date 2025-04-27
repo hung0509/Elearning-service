@@ -10,4 +10,6 @@ public interface AuthenticationService {
     public String logout(IntrospectRequest req);
 
     public AuthenticationResponse refresh(IntrospectRequest req);
+
+    public AuthenticationResponse outboundAuthentication(String code);
 }

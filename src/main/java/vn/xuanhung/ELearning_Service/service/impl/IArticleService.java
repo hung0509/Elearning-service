@@ -2,7 +2,6 @@ package vn.xuanhung.ELearning_Service.service.impl;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -21,6 +20,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.Base64DecodedMultipartFile;
@@ -60,7 +63,7 @@ public class IArticleService implements ArticleService {
     UserInfoRepository articleUserRepository;
     ModelMapper modelMapper;
 
-    AmazonS3 amazonS3;
+    S3Client s3Client;
     private final CategoryController categoryController;
 
     @NonFinal
@@ -167,6 +170,32 @@ public class IArticleService implements ArticleService {
         return null;
     }
 
+//    private String uploadImage(MultipartFile file) throws IOException {
+//        String contentType = file.getContentType();
+//        InputStream inputStream = file.getInputStream();
+//
+//        //Kiểm tra nếu không phải là ảnh thì không cho phép tiếp tục
+//        if (!contentType.equals("image/jpeg")
+//                && !contentType.equals("image/png")
+//                && !contentType.equals("image/webp")
+//                && !contentType.equals("image/gif")
+//                && !contentType.equals("image/bmp")) {
+//            throw new AppException(ErrorCode.NOT_VALID_FORMAT_IMAGE);
+//        }
+//
+//        ObjectMetadata metadata = new ObjectMetadata();
+//        metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
+//
+//        String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
+//        PutObjectRequest request = new PutObjectRequest(AWS_BUCKET, keyName, inputStream, metadata);
+//        amazonS3.putObject(request);//Đẩy hình ảnh lên trên bucket
+//
+//        URL url = amazonS3.getUrl(AWS_BUCKET, keyName);
+//        //Ở đây đang để ở public access
+//        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
+//        return url.toString();
+//    }
+
     private String uploadImage(MultipartFile file) throws IOException {
         String contentType = file.getContentType();
         InputStream inputStream = file.getInputStream();
@@ -184,13 +213,24 @@ public class IArticleService implements ArticleService {
         metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
 
         String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
-        PutObjectRequest request = new PutObjectRequest(AWS_BUCKET, keyName, inputStream, metadata);
-        amazonS3.putObject(request);//Đẩy hình ảnh lên trên bucket
 
-        URL url = amazonS3.getUrl(AWS_BUCKET, keyName);
-        //Ở đây đang để ở public access
-        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
-        return url.toString();
+        software.amazon.awssdk.services.s3.model.PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(AWS_BUCKET)
+                .key(keyName)
+                .contentType(contentType)
+                .build();
+
+        PutObjectResponse future = s3Client.putObject(
+                putObjectRequest,
+                RequestBody.fromInputStream(inputStream, file.getSize())
+        );   //Đẩy hình ảnh lên trên bucket
+
+//        URL url = s3AsyncClient.getUrl(AWS_BUCKET, keyName);
+//        //Ở đây đang để ở public access
+//        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
+//        return url.toString();
+
+        return String.format("https://%s.s3.amazonaws.com/%s", AWS_BUCKET, keyName);
     }
 
     private MultipartFile base64ToMultipartFile(String base64) throws IOException {

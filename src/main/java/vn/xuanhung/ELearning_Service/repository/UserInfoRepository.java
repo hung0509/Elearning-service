@@ -7,4 +7,5 @@ import vn.xuanhung.ELearning_Service.entity.UserInfo;
 
 @Repository
 public interface UserInfoRepository extends JpaRepository<UserInfo, Integer>, JpaSpecificationExecutor<UserInfo>{
+    UserInfo findByEmail(String email);
 }

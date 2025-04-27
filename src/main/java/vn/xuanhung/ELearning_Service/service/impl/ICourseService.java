@@ -1,9 +1,9 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
 import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.CannedAccessControlList;
+
+
 import com.amazonaws.services.s3.model.ObjectMetadata;
-import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import jakarta.persistence.EntityManager;
@@ -25,6 +25,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.async.AsyncRequestBody;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.ParseHelper;
@@ -54,10 +60,15 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Service
 @Slf4j
@@ -79,7 +90,8 @@ public class ICourseService implements CourseService {
    // EntityManager entityManager;
     JdbcTemplate jdbcTemplate;
 
-    AmazonS3 amazonS3;
+    S3AsyncClient s3AsyncClient;
+    S3Client s3Client;
     YouTube youTube;
     KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -141,6 +153,8 @@ public class ICourseService implements CourseService {
                     .courseName(course.getCourseName())
                     .description(course.getDescription())
                     .courseDuration(course.getCourseDuration())
+                    .priceEntered(course.getPriceEntered())
+                    .priceAfterReduce(course.getPriceAfterReduce())
                     .quantity(course.getQuantity())
                     .createdAt(course.getCreatedAt())
                     .avatar(course.getAvatar())
@@ -279,6 +293,7 @@ public class ICourseService implements CourseService {
     }
 
     public String uploadTempFile(MultipartFile file) {
+        ExecutorService executorService = Executors.newFixedThreadPool(3); // Executor với 4 threads
         String key = "temp/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -286,12 +301,30 @@ public class ICourseService implements CourseService {
             metadata.setContentLength(file.getSize());
             metadata.setContentType(file.getContentType());
 
-            amazonS3.putObject(new PutObjectRequest(AWS_BUCKET, key, inputStream, metadata)
-                    .withCannedAcl(CannedAccessControlList.Private)); // Private vì tạm
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                    .bucket(AWS_BUCKET)  // Thay đổi với bucket thực tế
+                    .key(key)        // Tên của tệp trong S3
+                    .build();
 
-            return key; // Trả về
+
+            CompletableFuture<PutObjectResponse> future = s3AsyncClient.putObject(
+                    putObjectRequest,
+                    AsyncRequestBody.fromInputStream(inputStream, file.getSize(), executorService)
+            );// Private vì tạm
+
+            // Đợi quá trình upload hoàn tất và trả về key
+            future.get(); // Đảm bảo upload xong mới tiếp tục
+            // In ra key đã upload thành công
+            System.out.println("File uploaded successfully to S3 with key: " + key);
+            // Trả về key của file vừa upload lên S3
+            return key;
         } catch (IOException e) {
             throw new AppException(ErrorCode.UPLOAD_S3_FAIL);
+        } catch (ExecutionException | InterruptedException e) {
+            throw new RuntimeException(e);
+        }finally {
+            // Đảm bảo ExecutorService được shutdown khi không cần thiết
+            executorService.shutdown();
         }
     }
 
@@ -338,13 +371,24 @@ public class ICourseService implements CourseService {
         metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
 
         String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
-        PutObjectRequest request = new PutObjectRequest(AWS_BUCKET, keyName, inputStream, metadata);
-        amazonS3.putObject(request);//Đẩy hình ảnh lên trên bucket
 
-        URL url = amazonS3.getUrl(AWS_BUCKET, keyName);
-        //Ở đây đang để ở public access
-        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
-        return url.toString();
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(AWS_BUCKET)
+                .key(keyName)
+                .contentType(contentType)
+                .build();
+
+        PutObjectResponse future = s3Client.putObject(
+                putObjectRequest,
+                RequestBody.fromInputStream(inputStream, file.getSize())
+        );   //Đẩy hình ảnh lên trên bucket
+
+//        URL url = s3AsyncClient.getUrl(AWS_BUCKET, keyName);
+//        //Ở đây đang để ở public access
+//        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
+//        return url.toString();
+
+        return String.format("https://%s.s3.amazonaws.com/%s", AWS_BUCKET, keyName);
     }
 
     private String createPlaylist(String title, String description) {

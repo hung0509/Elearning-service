@@ -15,6 +15,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Service;
+import software.amazon.awssdk.core.ResponseInputStream;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
 import vn.xuanhung.ELearning_Service.entity.Course;
@@ -36,7 +42,7 @@ public class IProcessKafkaService {
     CourseRepository courseRepository;
     LessonRepository lessonRepository;
     YouTube youtube;
-    AmazonS3 amazonS3;
+    S3Client s3Client;
     @NonFinal
     @Value("${aws.bucket}")
     String AWS_BUCKET;
@@ -111,11 +117,16 @@ public class IProcessKafkaService {
         KafkaUploadVideoDto kafkaUploadVideoDto = consumerRecord.value();
         log.info("Received message with key: " + key);
         log.info("Received message with value: " + kafkaUploadVideoDto);
-        S3Object s3Object = amazonS3.getObject(AWS_BUCKET, kafkaUploadVideoDto.getS3Url());
-        InputStream inputStream = s3Object.getObjectContent();
 
-        InputStreamContent mediaContent = new InputStreamContent("video/*", inputStream);
-        mediaContent.setLength(s3Object.getObjectMetadata().getContentLength());
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(AWS_BUCKET)
+                .key(kafkaUploadVideoDto.getS3Url())  // ví dụ: "folder1/image.png"
+                .build();
+        ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
+
+
+        InputStreamContent mediaContent = new InputStreamContent("video/*", s3Object);
+        mediaContent.setLength(s3Object.response().contentLength());
         try {
             Video video = new Video();
 
@@ -158,7 +169,12 @@ public class IProcessKafkaService {
        } catch (Exception e) {
             throw new RuntimeException("Error uploading video to YouTube", e);
        } finally {
-            amazonS3.deleteObject(AWS_BUCKET, kafkaUploadVideoDto.getS3Url());
+            DeleteObjectRequest deleteObjectRequest = DeleteObjectRequest.builder()
+                    .bucket(AWS_BUCKET)
+                    .key(kafkaUploadVideoDto.getS3Url())
+                    .build();
+
+            s3Client.deleteObject(deleteObjectRequest);
         }
     }
 
