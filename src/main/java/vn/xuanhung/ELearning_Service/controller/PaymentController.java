@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.checkerframework.checker.units.qual.A;
+import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.view.RedirectView;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
@@ -37,6 +38,7 @@ public class PaymentController {
     UserInfoService userInfoService;
 
     @PostMapping("/create")
+    @ResponseBody
     public ApiResponse<String> createPayment(@RequestBody PaypalRequest request) throws PayPalRESTException, IOException {
         Payment payment = paypalService.creatPayment(request);
 

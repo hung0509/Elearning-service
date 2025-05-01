@@ -23,7 +23,7 @@ import vn.xuanhung.ELearning_Service.entity.UserInfo;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.repository.AccountRepository;
-import vn.xuanhung.ELearning_Service.repository.RoleReposiroty;
+import vn.xuanhung.ELearning_Service.repository.RoleRepository;
 import vn.xuanhung.ELearning_Service.repository.UserInfoRepository;
 import vn.xuanhung.ELearning_Service.service.AccountService;
 
@@ -36,7 +36,7 @@ import java.util.List;
 public class IAccountService implements AccountService {
     AccountRepository accountRepository;
     UserInfoRepository userInfoRepository;
-    RoleReposiroty roleReposiroty;
+    RoleRepository roleRepository;
     ModelMapper modelMapper;
     MailService mailService;
     PasswordEncoder passwordEncoder;
@@ -53,7 +53,6 @@ public class IAccountService implements AccountService {
     }
 
     @Override
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     @Transactional
     public ApiResponse<AccountResponse> save(CreateAccountRequest req) {
         log.info("***Log account service - save account***");
@@ -61,14 +60,14 @@ public class IAccountService implements AccountService {
 
         if(req.getRole() != null){
             if(req.getRole().equals(AppConstant.Role.ADMIN) || req.getRole().equals(AppConstant.Role.USER)) {
-                Role role = roleReposiroty.findById(req.getRole())
+                Role role = roleRepository.findById(req.getRole())
                         .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXIST));
                 account.setRole(role);
             }else{
                 throw new AppException(ErrorCode.SYSTEM_ERROR);
             }
         }else{
-            Role role = roleReposiroty.findById(AppConstant.Role.USER)
+            Role role = roleRepository.findById(AppConstant.Role.USER)
                     .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXIST));
             account.setRole(role);
         }

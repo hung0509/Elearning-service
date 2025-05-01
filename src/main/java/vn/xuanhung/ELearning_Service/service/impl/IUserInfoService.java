@@ -99,28 +99,24 @@ public class IUserInfoService implements UserInfoService {
     @Override
     public ApiResponse<String> registerCourse(UserCourseRequest req) {
         log.info("***Log user-info service - register course***");
-        Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        if (principal instanceof UserDetailCustom userDetails) {
-            Integer userId = userDetails.getUserId();
 
-            if(!courseRepository.existsById(req.getCourseId())) throw new AppException(ErrorCode.COURSE_NOT_EXIST);
+        if(!courseRepository.existsById(req.getCourseId())) throw new AppException(ErrorCode.COURSE_NOT_EXIST);
 
-            UserCourse userCourse = UserCourse.builder()
-                    .userId(userId)
-                    .courseId(req.getCourseId())
-                    .status(AppConstant.REGISTER)
-                    .enrollmentDate(new Date())
-                    .progression(BigDecimal.valueOf(0))
-                    .build();
+        UserCourse userCourse = UserCourse.builder()
+                .userId(req.getUserId())
+                .courseId(req.getCourseId())
+                .status(AppConstant.REGISTER)
+                .enrollmentDate(new Date())
+                .progression(BigDecimal.valueOf(0))
+                .build();
+        log.info("userCourse: {}", userCourse);
 
-            //Xử lý tiền paypal
-            userCourseRepository.save(userCourse);
-            return ApiResponse.<String>builder()
-                    .result("Register course successfully!")
-                    .build();
-        }
+        //Xử lý tiền paypal
+        userCourseRepository.save(userCourse);
+        return ApiResponse.<String>builder()
+                .result("Register course successfully!")
+                .build();
 
-        throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 
     @Override

@@ -37,6 +37,7 @@ public enum ErrorCode {
     ERROR_SQL(1234, "Have one error", HttpStatus.BAD_REQUEST),
     ERROR_UPLOAD(1235, "Have one error in upload", HttpStatus.BAD_REQUEST),
     UPLOAD_S3_FAIL(1236,"Have one error in S3", HttpStatus.BAD_REQUEST),
+    COMMENT_FAIL(12377, "Have one error in comment", HttpStatus.BAD_REQUEST),
     ;
 
     int code;

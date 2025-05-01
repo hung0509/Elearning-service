@@ -13,7 +13,7 @@ public abstract class AppConstant {
             "/auth", "/accounts", "/permissions", "/roles", "/auth/logout", "/auth/refresh", "auth/outbound/authentication"
     };
     public static final String[] GET_URL_PUBLIC = {
-            "/accounts/active/**", "/articles/**", "/courses/**", "/payments/**"
+            "/accounts/active/**", "/articles/**", "/courses/**", "/payments/**", "/ws-chat/**"
     };
 
     public static final class Role{
@@ -24,6 +24,7 @@ public abstract class AppConstant {
     public static final class Topic{
         public static final String EMAIL_TOPIC = "email_topic";
         public static final String VIDEO_TOPIC = "video_topic";
+        public static final String COMMENT_TOPIC = "comment_topic";
     }
 
     public static final class Level{
