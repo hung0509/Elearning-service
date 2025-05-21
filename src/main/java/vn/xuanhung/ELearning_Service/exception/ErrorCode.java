@@ -27,6 +27,8 @@ public enum ErrorCode {
     ARTICLE_NOT_EXIST(1015, "Payment create error", HttpStatus.BAD_REQUEST),
     LESSON_NOT_EXIST(1016, "Lesson not exist", HttpStatus.BAD_REQUEST),
     COURSE_NOT_EXIST(1017, "Course not exist", HttpStatus.BAD_REQUEST),
+    QUIZ_NOT_EXIST(1018, "Quiz not exist", HttpStatus.BAD_REQUEST),
+    DOCUMENT_NOT_EXIST(1019, "Document not exist", HttpStatus.BAD_REQUEST),
     PRODUCT_NOT_ENOUGH(1010, "Product not enough", HttpStatus.BAD_REQUEST),
     UNAUTHENTICATED(9999, "Unauthenticated", HttpStatus.UNAUTHORIZED),
     NOT_VALID_FORMAT_IMAGE(2001, "This file is not image", HttpStatus.BAD_REQUEST),
@@ -38,6 +40,9 @@ public enum ErrorCode {
     ERROR_UPLOAD(1235, "Have one error in upload", HttpStatus.BAD_REQUEST),
     UPLOAD_S3_FAIL(1236,"Have one error in S3", HttpStatus.BAD_REQUEST),
     COMMENT_FAIL(12377, "Have one error in comment", HttpStatus.BAD_REQUEST),
+    QUESTION_EMPTY(12378, "Not find question", HttpStatus.BAD_REQUEST),
+    ANSWER_EMPTY(12378, "Not find answer", HttpStatus.BAD_REQUEST),
+    INVALID_ANSWER_COUNT(12400, "Have one correct answer", HttpStatus.BAD_REQUEST)
     ;
 
     int code;

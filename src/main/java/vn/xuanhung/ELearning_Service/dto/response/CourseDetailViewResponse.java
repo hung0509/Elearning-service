@@ -1,6 +1,5 @@
 package vn.xuanhung.ELearning_Service.dto.response;
 
-import jakarta.persistence.Column;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
@@ -29,5 +28,10 @@ public class CourseDetailViewResponse {
     String level;
     Date createdAt;
     Boolean isRegister;
+    CertificateResponse certificate;
+    DiscountResponse discount;
+    CategoryResponse category;
     List<LessonResponse> lessons;
+    List<CourseDocumentResponse> documents;
+    List<QuizHeaderResponse> quizs;
 }

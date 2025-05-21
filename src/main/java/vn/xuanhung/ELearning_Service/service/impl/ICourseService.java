@@ -39,14 +39,8 @@ import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
-import vn.xuanhung.ELearning_Service.dto.response.CourseDetailViewResponse;
-import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
-import vn.xuanhung.ELearning_Service.dto.response.CourseResponse;
-import vn.xuanhung.ELearning_Service.dto.response.LessonResponse;
-import vn.xuanhung.ELearning_Service.entity.Certificate;
-import vn.xuanhung.ELearning_Service.entity.Course;
-import vn.xuanhung.ELearning_Service.entity.Discount;
-import vn.xuanhung.ELearning_Service.entity.Lesson;
+import vn.xuanhung.ELearning_Service.dto.response.*;
+import vn.xuanhung.ELearning_Service.entity.*;
 import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
@@ -82,6 +76,8 @@ public class ICourseService implements CourseService {
     DiscountRepository discountRepository;
     CertificateRepository certificateRepository;
     LessonRepository lessonRepository;
+    QuizRepository quizRepository;
+    CourseDocumentRepository courseDocumentRepository;
 
     CourseHeaderViewRepository courseHeaderViewRepository;
 
@@ -137,6 +133,68 @@ public class ICourseService implements CourseService {
                 .build();
     }
 
+    public ApiResponsePagination<List<CourseDetailViewResponse>> getCourseHeader2(CourseHeaderViewRequest req) {
+        log.info("***Log course service - get header course ***");
+        Pageable pageable = PageRequest.of(
+                req.getPage(),
+                req.getPageSize(),
+                Sort.by(Sort.Direction.DESC, "createdAt")
+        );
+        Specification<CourseHeaderView> spec = CourseHeaderSpecification.getSpecification(req);
+
+        Page<CourseHeaderView> page = courseHeaderViewRepository.findAll(spec, pageable);
+        List<CourseHeaderView> coursesEntity = page.getContent();
+        List<CourseHeaderViewResponse> courses = courseHeaderMapper.convertToDtoList(coursesEntity);
+
+        List<CourseDetailViewResponse> list = new ArrayList<>();
+
+        for(CourseHeaderViewResponse course: courses){
+            //Danh sach bai hojc
+            List<Lesson> lessons = lessonRepository.findAllByCourseIdAndIsActive(course.getId(), "Y");
+
+            List<LessonResponse> lessonResponses = lessons.stream()
+                    .map((item) -> modelMapper.map(item, LessonResponse.class)).toList();
+
+            //Danh sach bai kiem tra
+            List<Quiz> quizzes = quizRepository.findAllByCourseIdAndIsActive(course.getId(), "Y");
+            List<QuizHeaderResponse> quizHeaderResponses = quizzes.stream()
+                    .map((item) -> modelMapper.map(item, QuizHeaderResponse.class)).toList();
+
+            //Danh sach tai lieu
+            List<CourseDocument> documents = courseDocumentRepository.findAllByCourseIdAndIsActive(course.getId(), "Y");
+            List<CourseDocumentResponse> documentResponses = documents.stream()
+                    .map((item) -> modelMapper.map(item, CourseDocumentResponse.class)).toList();
+
+            CourseDetailViewResponse courseDetailViewResponse =  CourseDetailViewResponse.builder()
+                    .id(course.getId())
+                    .courseName(course.getCourseName())
+                    .description(course.getDescription())
+                    .courseDuration(course.getCourseDuration())
+                    .priceEntered(course.getPriceEntered())
+                    .priceAfterReduce(course.getPriceAfterReduce())
+                    .quantity(course.getQuantity())
+                    .createdAt(course.getCreatedAt())
+                    .avatar(course.getAvatar())
+                    .level(course.getLevel())
+                    .certificate(course.getCertificate())
+                    .discount(course.getDiscount())
+                    .category(course.getCategory())
+                    .lessons(lessonResponses)
+                    .quizs(quizHeaderResponses)
+                    .documents(documentResponses)
+                    .build();
+            list.add(courseDetailViewResponse);
+        }
+
+        return ApiResponsePagination.<List<CourseDetailViewResponse>>builder()
+                .result(list)
+                .pageSize(req.getPageSize())
+                .totalPages(page.getTotalPages())
+                .currentPage(req.getPage())
+                .totalItems(page.getTotalElements())
+                .build();
+    }
+
     @Override
     public ApiResponse<CourseDetailViewResponse> getCourseDetail(CourseDetailViewRequest req) {
         log.info("***Log course service - get detail course ***");
@@ -144,10 +202,22 @@ public class ICourseService implements CourseService {
             Course course = courseRepository.findById(req.getCourseId())
                     .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
 
-            List<Lesson> lessons = lessonRepository.findAllByCourseId(req.getCourseId());
+            //Danh sach bai hojc
+            List<Lesson> lessons = lessonRepository.findAllByCourseIdAndIsActive(req.getCourseId(), "Y");
 
             List<LessonResponse> lessonResponses = lessons.stream()
                     .map((item) -> modelMapper.map(item, LessonResponse.class)).toList();
+
+            //Danh sach bai kiem tra
+            List<Quiz> quizzes = quizRepository.findAllByCourseIdAndIsActive(req.getCourseId(), "Y");
+            List<QuizHeaderResponse> quizHeaderResponses = quizzes.stream()
+                    .map((item) -> modelMapper.map(item, QuizHeaderResponse.class)).toList();
+
+            //Danh sach tai lieu
+            List<CourseDocument> documents = courseDocumentRepository.findAllByCourseIdAndIsActive(req.getCourseId(), "Y");
+            List<CourseDocumentResponse> documentResponses = documents.stream()
+                    .map((item) -> modelMapper.map(item, CourseDocumentResponse.class)).toList();
+
             CourseDetailViewResponse courseDetailViewResponse =  CourseDetailViewResponse.builder()
                     .id(course.getId())
                     .courseName(course.getCourseName())
@@ -161,6 +231,8 @@ public class ICourseService implements CourseService {
                     .trailer(course.getTrailer())
                     .level(course.getLevel())
                     .lessons(lessonResponses)
+                    .quizs(quizHeaderResponses)
+                    .documents(documentResponses)
                     .build();
 
             Boolean check = userCourseRepository.existsByCourseIdAndUserId(req.getCourseId(), req.getUserId());
@@ -293,7 +365,7 @@ public class ICourseService implements CourseService {
     }
 
     public String uploadTempFile(MultipartFile file) {
-        ExecutorService executorService = Executors.newFixedThreadPool(3); // Executor với 4 threads
+        ExecutorService executorService = Executors.newFixedThreadPool(3); // Executor với 3 threads
         String key = "temp/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
 
         try (InputStream inputStream = file.getInputStream()) {
@@ -310,7 +382,7 @@ public class ICourseService implements CourseService {
             CompletableFuture<PutObjectResponse> future = s3AsyncClient.putObject(
                     putObjectRequest,
                     AsyncRequestBody.fromInputStream(inputStream, file.getSize(), executorService)
-            );// Private vì tạm
+            );
 
             // Đợi quá trình upload hoàn tất và trả về key
             future.get(); // Đảm bảo upload xong mới tiếp tục

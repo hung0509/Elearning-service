@@ -1,5 +1,6 @@
 package vn.xuanhung.ELearning_Service.entity;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
 import jakarta.persistence.*;
 import lombok.*;
@@ -42,8 +43,9 @@ public class Account extends AbstractMappedEntity {
     @Column(name = "expires_at")
     Date expiresAt;
 
-    @JsonManagedReference
-    @OneToOne
-    @JoinColumn(name = "role_name")
+    @JsonBackReference
+    @ManyToOne
+    @JoinColumn(name = "role_name", referencedColumnName = "role_name")
     Role role;
+
 }

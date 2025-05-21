@@ -19,7 +19,8 @@ import vn.xuanhung.ELearning_Service.entity.Role;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.repository.PermissionRepository;
-import vn.xuanhung.ELearning_Service.repository.RoleReposiroty;
+
+import vn.xuanhung.ELearning_Service.repository.RoleRepository;
 import vn.xuanhung.ELearning_Service.service.RoleService;
 
 import java.util.HashSet;
@@ -31,7 +32,7 @@ import java.util.Set;
 @RequiredArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class IRoleService implements RoleService {
-    RoleReposiroty roleReposiroty;
+    RoleRepository roleRepository;
     PermissionRepository permissionRepository;
     ModelMapper modelMapper;
 
@@ -40,7 +41,7 @@ public class IRoleService implements RoleService {
         log.info("***Log role service - get all role***");
         Pageable pageable = PageRequest.of(request.getPage(), request.getPageSize());
 
-        Page<Role> rolePage = roleReposiroty.findAll(pageable);
+        Page<Role> rolePage = roleRepository.findAll(pageable);
 
         List<Role> roles = rolePage.getContent();
 
@@ -69,7 +70,7 @@ public class IRoleService implements RoleService {
         }
 
         role.setPermissions(permissions);
-        role = roleReposiroty.save(role);
+        role = roleRepository.save(role);
 
         return  ApiResponse.<RoleResponse>builder()
                 .result(modelMapper.map(role, RoleResponse.class))

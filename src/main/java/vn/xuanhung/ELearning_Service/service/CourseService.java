@@ -15,6 +15,8 @@ import java.util.List;
 public interface CourseService extends BaseServiceGeneric<Integer, CourseRequest, CourseResponse> {
     ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(CourseHeaderViewRequest req);
 
+    ApiResponsePagination<List<CourseDetailViewResponse>> getCourseHeader2(CourseHeaderViewRequest req);
+
     ApiResponse<CourseDetailViewResponse> getCourseDetail(CourseDetailViewRequest req);
 
     ApiResponse<List<CourseHeaderViewResponse>> getCourseHeaderSpecial();

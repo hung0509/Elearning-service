@@ -27,7 +27,7 @@ public class CourseController {
     CourseService courseService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ApiResponse<CourseResponse> addCourse(@ModelAttribute CourseRequest req) {
+        public ApiResponse<CourseResponse> addCourse(@ModelAttribute CourseRequest req) {
         log.info("*Log controller course - save course*");
         return courseService.save(req);
     }
@@ -36,6 +36,12 @@ public class CourseController {
     public ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(@ModelAttribute CourseHeaderViewRequest req) {
         log.info("*Log controller course - get header course*");
         return courseService.getCourseHeader(req);
+    }
+
+    @GetMapping("/v2")
+    public ApiResponsePagination<List<CourseDetailViewResponse>> getCourseHeader2(@ModelAttribute CourseHeaderViewRequest req) {
+        log.info("*Log controller course - get header course*");
+        return courseService.getCourseHeader2(req);
     }
 
     @GetMapping("/detail")

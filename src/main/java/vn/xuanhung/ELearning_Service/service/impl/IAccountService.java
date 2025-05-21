@@ -60,8 +60,10 @@ public class IAccountService implements AccountService {
 
         if(req.getRole() != null){
             if(req.getRole().equals(AppConstant.Role.ADMIN) || req.getRole().equals(AppConstant.Role.USER)) {
-                Role role = roleRepository.findById(req.getRole())
-                        .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXIST));
+                Role role = roleRepository.findByRoleName(AppConstant.Role.USER);
+                if(role == null){
+                    throw new AppException(ErrorCode.ROLE_NOT_EXIST);
+                }
                 account.setRole(role);
             }else{
                 throw new AppException(ErrorCode.SYSTEM_ERROR);

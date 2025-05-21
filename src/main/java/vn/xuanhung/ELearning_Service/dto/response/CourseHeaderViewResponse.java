@@ -33,4 +33,5 @@ public class CourseHeaderViewResponse {
     CertificateResponse certificate;
     DiscountResponse discount;
     CategoryResponse category;
+
 }

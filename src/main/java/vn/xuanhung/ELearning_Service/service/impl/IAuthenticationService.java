@@ -29,7 +29,7 @@ import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.jwt.JwtUtil;
 import vn.xuanhung.ELearning_Service.repository.AccountRepository;
 import vn.xuanhung.ELearning_Service.repository.InvalidatedTokenRepository;
-import vn.xuanhung.ELearning_Service.repository.RoleReposiroty;
+import vn.xuanhung.ELearning_Service.repository.RoleRepository;
 import vn.xuanhung.ELearning_Service.repository.UserInfoRepository;
 import vn.xuanhung.ELearning_Service.repository.httpclient.OutboundIdentityClient;
 import vn.xuanhung.ELearning_Service.repository.httpclient.OutboundUserClient;
@@ -55,7 +55,7 @@ public class IAuthenticationService implements AuthenticationService {
     JwtUtil jwtUtil;
     AccountRepository accountRepository;
     UserInfoRepository userInfoRepository;
-    RoleReposiroty roleReposiroty;
+    RoleRepository roleRepository;
     InvalidatedTokenRepository invalidatedTokenRepository;
     MailService mailService;
     KafkaTemplate<String, Object> kafkaTemplate;
@@ -103,12 +103,20 @@ public class IAuthenticationService implements AuthenticationService {
         log.info("TOKEN RESPONSE {}", response);
 
         var userInfo = outboundUserClient.getUserInfo("json", response.getAccessToken());
-        var user = userInfoRepository.findByEmail(userInfo.getEmail());
+
+        log.info("userInfo {}", userInfo);
+
+        UserInfo user = userInfoRepository.findByEmail(userInfo.getEmail());
 
         Account account = null;
-        if(Objects.isNull(user)) { //Neeus chua ton tai thi them user nay vao he thong
-            Role role = roleReposiroty.findById("USER")
-                    .orElseThrow(() -> new AppException(ErrorCode.ROLE_NOT_EXIST));
+        if(user == null) { //Neeus chua ton tai thi them user nay vao he thong
+            Role role = roleRepository.findByRoleName(AppConstant.Role.USER);
+            if(role == null){
+                throw new AppException(ErrorCode.ROLE_NOT_EXIST);
+            }
+
+            log.info("role {}", role);
+
             String password = generatePassword();
 
             user = UserInfo.builder()
@@ -116,10 +124,12 @@ public class IAuthenticationService implements AuthenticationService {
                     .firstName(userInfo.getFamilyName())
                     .lastName(userInfo.getGivenName())
                     .build();
-            user = userInfoRepository.save(user);
+            user = userInfoRepository.saveAndFlush(user);
+            log.info("userInfo {}", userInfo);
 
             account = new Account();
             account.setRole(role);
+            account.setUsername(userInfo.getEmail());
             account.setPassword(passwordEncoder.encode(password));
             account.setIsActive("N");
             account.setUserId(user.getId());
@@ -147,8 +157,12 @@ public class IAuthenticationService implements AuthenticationService {
                 e.printStackTrace();
             }
         }else{
+            log.info("user: {}", user.getId());
             account = accountRepository.findByUserId(user.getId());
         }
+
+        log.info("Account: {}", account);
+
 
         String token = this.jwtUtil.generateToken(account);
 
@@ -249,6 +263,8 @@ public class IAuthenticationService implements AuthenticationService {
             password[i] = password[j];
             password[j] = temp;
         }
+
+        log.info("Password: {}", new String(password));
 
         return new String(password);
     }

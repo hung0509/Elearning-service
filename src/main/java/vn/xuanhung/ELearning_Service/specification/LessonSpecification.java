@@ -24,6 +24,12 @@ public class LessonSpecification {
                         : criteriaBuilder.like(root.get("courseId"), "%" + lessonName + "%");
     }
 
+    public static Specification<Lesson> isActive(String isActive){
+        return (root, query, criteriaBuilder) ->
+                isActive == null ? criteriaBuilder.conjunction()
+                        : criteriaBuilder.like(root.get("isActive"), isActive);
+    }
+
     public static Specification<Lesson> getSpecification(LessonRequest req) {
         Specification<Lesson> spec = Specification.where(isCourseId(req.getCourseId()))
                 .and(isLessonName(req.getLessonName()));

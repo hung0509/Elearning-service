@@ -4,8 +4,6 @@ import org.springframework.data.jpa.domain.Specification;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
 
-import java.util.Date;
-
 public class CourseHeaderSpecification {
     public static Specification<CourseHeaderView> likeCourseName(String name)
     {

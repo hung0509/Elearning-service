@@ -4,6 +4,7 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
@@ -23,8 +24,8 @@ import java.util.List;
 public class LessonController {
     LessonService lessonService;
 
-    @PostMapping
-    public ApiResponse<LessonResponse> save(@RequestBody LessonRequest request) {
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<LessonResponse> save(@ModelAttribute LessonRequest request) {
         log.info("*Log lesson controller - save lesson*");
         return lessonService.save(request);
     }

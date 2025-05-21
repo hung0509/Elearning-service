@@ -158,7 +158,7 @@ public class IProcessKafkaService {
     }
 
     private BigDecimal getCourseDuration(Integer courseId){
-        List<Lesson> lessons = lessonRepository.findAllByCourseId(courseId);
+        List<Lesson> lessons = lessonRepository.findAllByCourseIdAndIsActive(courseId, "Y");
 
         BigDecimal courseDuration = BigDecimal.ZERO;
         if(!lessons.isEmpty()){

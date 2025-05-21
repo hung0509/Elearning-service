@@ -34,6 +34,8 @@ public class Role {
     @JsonManagedReference
     Set<Permission> permissions;
 
-    @OneToOne(mappedBy = "role")
-    Account account;
+    @JsonManagedReference
+    @OneToMany(mappedBy = "role")
+    Set<Account> accounts;
+
 }

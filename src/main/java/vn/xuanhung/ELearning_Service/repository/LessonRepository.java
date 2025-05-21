@@ -9,7 +9,7 @@ import java.util.List;
 
 @Repository
 public interface LessonRepository extends JpaRepository<Lesson, Integer>, JpaSpecificationExecutor<Lesson> {
-    List<Lesson> findAllByCourseId(int courseId);
+    List<Lesson> findAllByCourseIdAndIsActive(int courseId, String isActive);
 
     Number countAllByCourseId(int courseId);
 
