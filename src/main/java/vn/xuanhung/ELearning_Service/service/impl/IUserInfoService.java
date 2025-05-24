@@ -17,22 +17,21 @@ import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.BaseRequest;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
-import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
-import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
-import vn.xuanhung.ELearning_Service.dto.request.UserCourseRequest;
-import vn.xuanhung.ELearning_Service.dto.request.UserLessonRequest;
+import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.entity.*;
 import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
+import vn.xuanhung.ELearning_Service.entity.view.CourseRegisterView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.jwt.UserDetailCustom;
 import vn.xuanhung.ELearning_Service.repository.*;
 import vn.xuanhung.ELearning_Service.repository.view.ArticleUserViewRepository;
 import vn.xuanhung.ELearning_Service.repository.view.CourseHeaderViewRepository;
+import vn.xuanhung.ELearning_Service.repository.view.CourseRegisterViewRepository;
 import vn.xuanhung.ELearning_Service.service.UserInfoService;
 import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
@@ -49,6 +48,7 @@ public class IUserInfoService implements UserInfoService {
     UserInfoRepository userInfoRepository;
     CourseRepository courseRepository;
     UserCourseRepository userCourseRepository;
+    CourseRegisterViewRepository courseRegisterViewRepository;
     UserLessonRepository userLessonRepository;
     LessonRepository lessonRepository;
     ArticleUserViewRepository articleUserViewRepository;
@@ -80,13 +80,9 @@ public class IUserInfoService implements UserInfoService {
                     .map(item -> modelMapper.map(item, ArticleUserViewResponse.class)).toList());
 
             //Get courses have registered by UserId
-            CourseHeaderViewRequest req1 = CourseHeaderViewRequest.builder()
-                    .userId(id)
-                    .build();
-            Specification<CourseHeaderView> spec1 = CourseHeaderSpecification.getSpecification(req1);
+            List<CourseRegisterView> courseRegisterView = courseRegisterViewRepository.findAllByUserId(id);
 
-            Page<CourseHeaderView> page1 = courseHeaderViewRepository.findAll(spec1, pageable);
-            userInfoResponse.setCourses(page1.getContent().stream()
+            userInfoResponse.setCourses(courseRegisterView.stream()
                     .map(item -> modelMapper.map(item, CourseHeaderViewResponse.class)).toList());
 
             return ApiResponse.<UserInfoResponse>builder()
@@ -174,6 +170,24 @@ public class IUserInfoService implements UserInfoService {
                 .result(page.getContent().stream().map(item -> modelMapper.map(item, UserInfoResponse.class)).toList())
                 .build();
     }
+
+    @Override
+    public ApiResponse<UserInfoResponse> update(UserInfoRequest req) {
+        if(req.getId() != null){
+            UserInfo userInfo = userInfoRepository.findById(req.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+            modelMapper.map(req, userInfo);
+
+            userInfo = userInfoRepository.save(userInfo);
+            return ApiResponse.<UserInfoResponse>builder()
+                    .result(modelMapper.map(userInfo, UserInfoResponse.class))
+                    .build();
+        }else{
+            return null;
+        }
+    }
+
+
 
 
 }

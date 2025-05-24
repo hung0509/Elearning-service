@@ -7,9 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
-import vn.xuanhung.ELearning_Service.dto.request.AuthenticationRequest;
-import vn.xuanhung.ELearning_Service.dto.request.IntrospectRequest;
-import vn.xuanhung.ELearning_Service.dto.request.OutboundRequest;
+import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.AuthenticationResponse;
 import vn.xuanhung.ELearning_Service.service.AuthenticationService;
 
@@ -54,6 +52,15 @@ public class AuthenticationController {
         return ApiResponse.<AuthenticationResponse>builder()
                 .message("Authentication success")
                 .result(authenticationService.refresh(req))
+                .build();
+    }
+
+    @PostMapping("/reset")
+    public ApiResponse<Void> refresh(@RequestBody UpdateAccountRequest req) {
+        log.info("$---------Log authentication. reset password---------$");
+        authenticationService.resetPassword(req);
+        return ApiResponse.<Void>builder()
+                .message("Reset password success")
                 .build();
     }
 }

@@ -16,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.DateHelper;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
@@ -136,17 +137,17 @@ public class IAuthenticationService implements AuthenticationService {
             account = accountRepository.save(account);
 
             //Tien hanh gui mail
-            String message = "<p>Below is the password we reset: " + password + "</p>";
+            //String message = "<p>Below is the password we reset: " + password + "</p>";
 
             MailContentRequest mailContentRequest = MailContentRequest.builder()
                     .to(user.getLastName() + " " + user.getFirstName())
                     .title("Welcome new members")
-                    .userId(user.getId())
+                    .password(password)
                     .build();
-            String fromMail = mailService.formGetActiveAccount(mailContentRequest);
+            String fromMail = mailService.formGetAccountByLoginGoogle(mailContentRequest);
             MailRequest mailRequest = MailRequest.builder()
                     .toEmail(user.getEmail())
-                    .subject("Confirm account activation")
+                    .subject("Generate password for account")
                     .htmlContent(fromMail)
                     .build();
 
@@ -186,6 +187,10 @@ public class IAuthenticationService implements AuthenticationService {
 
         log.info("User Detail: " + SecurityContextHolder.getContext().getAuthentication());
         Account account = accountRepository.findByUsername(req.getUsername());
+
+        if(!"Y".equals(account.getIsActive())){
+            throw new AppException(ErrorCode.ACCOUNT_NOT_ACTIVE);
+        }
 
         if (account != null) {
             String token = this.jwtUtil.generateToken(account);
@@ -241,6 +246,50 @@ public class IAuthenticationService implements AuthenticationService {
         }catch (Exception e){
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
+    }
+
+    @Override
+    public ApiResponse<Void> resetPassword(UpdateAccountRequest req) {
+        log.info("***Log authentication service - reset password account***");
+        UserInfo user = userInfoRepository.findByEmail(req.getEmail());
+        Account account = null;
+        if(user != null){
+            account = accountRepository.findByUserId(user.getId());
+        }else{
+            throw new AppException(ErrorCode.USER_NOT_EXIST);
+        }
+
+        if(account != null) {
+            String password = generatePassword();
+
+            //String message = "<p>Below is the password we reset: " + password + "</p>";
+
+            MailContentRequest mailContentRequest = MailContentRequest.builder()
+                    .to(user.getLastName() + " " + user.getFirstName())
+                    .title("Welcome new members")
+                    .password(password)
+                    .build();
+            String fromMail = mailService.formResetPasswordEmail(mailContentRequest);
+            MailRequest mailRequest = MailRequest.builder()
+                    .toEmail(user.getEmail())
+                    .subject("Generate password for account")
+                    .htmlContent(fromMail)
+                    .build();
+
+            try {
+                kafkaTemplate.send(AppConstant.Topic.EMAIL_TOPIC, mailRequest).get();
+                log.info("Kafka send");
+            }catch (Exception e){
+                e.printStackTrace();
+            }
+
+            account.setPassword(passwordEncoder.encode(password));
+
+            accountRepository.save(account);
+            return ApiResponse.<Void>builder().build();
+        }
+        else
+            throw new AppException(ErrorCode.USER_NOT_EXIST);
     }
 
     private String generatePassword(){

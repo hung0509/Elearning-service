@@ -68,6 +68,101 @@ public class MailService {
         return html;
     }
 
+    public String formGetAccountByLoginGoogle(MailContentRequest mailRequest){
+        String html = """
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <style>
+                        .header {
+                            background-color: #007bff;
+                            color: white;
+                            padding: 10px;
+                            text-align: center;
+                        }
+                        .content {
+                            font-family: Arial, sans-serif;
+                            line-height: 1.6;
+                            padding: 20px;
+                        }
+                        .footer {
+                            font-size: 12px;
+                            color: #777;
+                            text-align: center;
+                            padding: 10px;
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="email-container">
+                        <div class="header">
+                            <h1>%s</h1>
+                        </div>
+                        <div class="content">
+                            <p>Hi, %s</p>
+                            <p>Thank you for registering on our platform.</p>
+                            <p>We are excited to have you onboard. Feel free to explore and reach out if you need any help.</p>
+                            <p>Below is the password we reset: %s</p>
+                        </div>
+                        <div class="footer">
+                            <p>&copy; 2025 Your Company. All rights reserved.</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                """.formatted(mailRequest.getTitle(), mailRequest.getTo(), mailRequest.getPassword());
+        return html;
+    }
+
+    public String formResetPasswordEmail(MailContentRequest mailRequest) {
+        String html = """
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    .header {
+                        background-color: #007bff;
+                        color: white;
+                        padding: 10px;
+                        text-align: center;
+                    }
+                    .content {
+                        font-family: Arial, sans-serif;
+                        line-height: 1.6;
+                        padding: 20px;
+                    }
+                    .footer {
+                        font-size: 12px;
+                        color: #777;
+                        text-align: center;
+                        padding: 10px;
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="email-container">
+                    <div class="header">
+                        <h1>%s</h1>
+                    </div>
+                    <div class="content">
+                        <p>Hi %s,</p>
+                        <p>We received a request to reset your password.</p>
+                        <p>Your new temporary password is:</p>
+                        <p><strong>%s</strong></p>
+                        <p>Please log in using this password and change it immediately for security reasons.</p>
+                        <p>If you did not request this, please contact our support team immediately.</p>
+                    </div>
+                    <div class="footer">
+                        <p>&copy; 2025 Your Company. All rights reserved.</p>
+                    </div>
+                </div>
+            </body>
+            </html>
+            """.formatted(mailRequest.getTitle(), mailRequest.getTo(), mailRequest.getPassword());
+        return html;
+    }
+
+
     @KafkaListener(topics = AppConstant.Topic.EMAIL_TOPIC, groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory")
     public void sendHtmlEmail(ConsumerRecord<String, MailRequest> consumerRecord, Acknowledgment acknowledgment) {
         log.info("*Log mail service - sen mail verify account*");

@@ -116,21 +116,18 @@ public class IAccountService implements AccountService {
 
     @Override
     public ApiResponse<AccountResponse> update(UpdateAccountRequest request) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
+        Account account = accountRepository.findByUserId(request.getUserId());
+        if(account != null){
+            modelMapper.map(request, account);
+            account.setPassword(passwordEncoder.encode(request.getPassword()));
 
-        if(username != null && !username.isEmpty()){
-            Account account = accountRepository.findByUsername(username);
-            if(account != null){
-                modelMapper.map(request, account);
-                account.setPassword(passwordEncoder.encode(request.getPassword()));
-
-                account = accountRepository.save(account);
-                return ApiResponse.<AccountResponse>builder()
-                        .message("Update successfully!")
-                        .result(modelMapper.map(account, AccountResponse.class))
-                        .build();
-            }
+            account = accountRepository.save(account);
+            return ApiResponse.<AccountResponse>builder()
+                    .message("Update successfully!")
+                    .result(modelMapper.map(account, AccountResponse.class))
+                    .build();
         }
+
         throw new AppException(ErrorCode.UNAUTHENTICATED);
     }
 

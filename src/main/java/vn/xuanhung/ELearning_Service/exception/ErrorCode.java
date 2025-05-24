@@ -42,7 +42,8 @@ public enum ErrorCode {
     COMMENT_FAIL(12377, "Have one error in comment", HttpStatus.BAD_REQUEST),
     QUESTION_EMPTY(12378, "Not find question", HttpStatus.BAD_REQUEST),
     ANSWER_EMPTY(12378, "Not find answer", HttpStatus.BAD_REQUEST),
-    INVALID_ANSWER_COUNT(12400, "Have one correct answer", HttpStatus.BAD_REQUEST)
+    INVALID_ANSWER_COUNT(12400, "Have one correct answer", HttpStatus.BAD_REQUEST),
+    ACCOUNT_NOT_ACTIVE(12222, "Please active account!", HttpStatus.OK)
     ;
 
     int code;

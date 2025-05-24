@@ -10,7 +10,8 @@ public abstract class AppConstant {
     public static final String STATUS_PENDING = "PENDING";
 
     public static final String[] URL_PUBLIC = {
-            "/auth", "/accounts", "/permissions", "/roles", "/auth/logout", "/auth/refresh", "auth/outbound/authentication"
+            "/auth", "/accounts", "/permissions", "/roles", "/auth/logout",
+            "/auth/refresh", "auth/outbound/authentication", "/auth/reset"
     };
     public static final String[] GET_URL_PUBLIC = {
             "/accounts/active/**", "/articles/**", "/courses/**", "/payments/**", "/ws-chat/**"

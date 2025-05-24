@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class QuizHeaderResponse {
     Integer id;
+    Integer courseId;
     String title;
     String description;
     Integer timeLimit;

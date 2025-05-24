@@ -3,8 +3,8 @@ package vn.xuanhung.ELearning_Service.dto.request;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import org.joda.time.DateTime;
-import org.joda.time.LocalDateTime;
+
+import java.util.List;
 
 @Slf4j
 @Data
@@ -12,11 +12,8 @@ import org.joda.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UpdateAccountRequest {
+public class QuizResultRequest {
+    Integer quizId;
     Integer userId;
-    String password;
-    String isActive;
-    String token;
-    LocalDateTime expiresAt;
-    String email;
+    List<AnswerResultRequest> results;
 }

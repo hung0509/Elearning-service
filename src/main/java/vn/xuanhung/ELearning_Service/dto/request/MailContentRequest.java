@@ -16,4 +16,5 @@ public class MailContentRequest {
     String content;
     String to;
     Integer userId;
+    String password;
 }
