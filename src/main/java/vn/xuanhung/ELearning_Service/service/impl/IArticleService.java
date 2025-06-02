@@ -1,6 +1,5 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
-import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +26,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.Base64DecodedMultipartFile;
+import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.controller.CategoryController;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
@@ -47,11 +47,8 @@ import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.Base64;
-import java.util.Date;
-import java.util.List;
+import java.time.Duration;
+import java.util.*;
 
 @Service
 @Slf4j
@@ -62,6 +59,8 @@ public class IArticleService implements ArticleService {
     ArticleUserViewRepository articleUserViewRepository;
     UserInfoRepository articleUserRepository;
     ModelMapper modelMapper;
+    RedisGenericCacheService<ArticleUserView> redisGenericCacheService;
+    RedisGenericCacheService<Article> redisGenericCacheService1;
 
     S3Client s3Client;
     private final CategoryController categoryController;
@@ -77,6 +76,22 @@ public class IArticleService implements ArticleService {
     @Override
     public ApiResponsePagination<List<ArticleResponse>> findAll(ArticleRequest request) {
         log.info("***Log article service - get all article by pagination***");
+//        if(request.getId() != null){
+//            redisGenericCacheService1.setClazz(Article.class);
+//            redisGenericCacheService1.setPrefix("article");
+//            redisGenericCacheService1.setDbLoaderById(id -> articleRepository.findById(request.getId()).orElse(null));
+//            Optional<Article> article = redisGenericCacheService1.getById(request.getId(), Duration.ofMinutes(5));
+//            log.info("data");
+//            List<ArticleResponse> data = new ArrayList<>();
+//            Article
+//            modelMapper.map(article.get() , ArticleResponse.class);
+//            data.add(article);
+//
+//            return ApiResponsePagination.<List<ArticleResponse>>builder()
+//                    .result(data)
+//                    .build();
+//        }
+
         Pageable pageable = PageRequest.of(
                 request.getPage(),
                 request.getPageSize(),
@@ -99,6 +114,18 @@ public class IArticleService implements ArticleService {
     @Override
     public ApiResponsePagination<List<ArticleUserViewResponse>> getArticleUserView(ArticleUserViewRequest req) {
         log.info("***Log article service - get all article by pagination***");
+        if(req.getId() != null){
+            redisGenericCacheService.setClazz(ArticleUserView.class);
+            redisGenericCacheService.setPrefix("article:user");
+            redisGenericCacheService.setDbLoaderById(id -> articleUserViewRepository.findById(req.getId()).orElse(null));
+            ArticleUserView article = redisGenericCacheService.getById(req.getId(), Duration.ofMinutes(5)).get();
+            List<ArticleUserViewResponse> data = new ArrayList<>();
+            data.add(modelMapper.map(article , ArticleUserViewResponse.class));
+
+            return ApiResponsePagination.<List<ArticleUserViewResponse>>builder()
+                    .result(data)
+                    .build();
+        }
         Pageable pageable = PageRequest.of(req.getPage(), req.getPageSize(),
                 Sort.by(Sort.Direction.DESC, "updatedAt"));
 
@@ -270,4 +297,6 @@ public class IArticleService implements ArticleService {
 
         return document.body().html();
     }
+
+
 }

@@ -12,8 +12,7 @@ import java.math.BigDecimal;
 @Slf4j
 @AllArgsConstructor
 @NoArgsConstructor
-@Getter
-@Setter
+@Data
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_user_info")

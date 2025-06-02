@@ -4,6 +4,7 @@ import com.amazonaws.services.s3.AmazonS3;
 
 
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
 import jakarta.persistence.EntityManager;
@@ -34,6 +35,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.ParseHelper;
+import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
@@ -41,6 +43,7 @@ import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
 import vn.xuanhung.ELearning_Service.dto.response.*;
 import vn.xuanhung.ELearning_Service.entity.*;
+import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
@@ -55,14 +58,13 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.time.Duration;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -91,6 +93,8 @@ public class ICourseService implements CourseService {
     YouTube youTube;
     KafkaTemplate<String, Object> kafkaTemplate;
 
+    RedisGenericCacheService<CourseHeaderView> redisGenericCacheService;
+    ObjectMapper objectMapper;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -113,6 +117,23 @@ public class ICourseService implements CourseService {
     @Override
     public ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(CourseHeaderViewRequest req) {
         log.info("***Log course service - get header course ***");
+        if(req.getCourseId() != null){
+            redisGenericCacheService.setClazz(CourseHeaderView.class);
+            redisGenericCacheService.setPrefix("course:header");
+            redisGenericCacheService.setDbLoaderById(id -> courseHeaderViewRepository.findById(req.getCourseId()).orElse(null));
+            Optional<CourseHeaderView> courseHeaderView = redisGenericCacheService.getById(req.getCourseId(), Duration.ofMinutes(30));
+            log.info("data");
+            List<CourseHeaderViewResponse> data = new ArrayList<>();
+            data.add(modelMapper.map(courseHeaderView , CourseHeaderViewResponse.class));
+
+            return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
+                    .result(data)
+                    .build();
+        }
+
+//        List<Optional<CourseHeaderView>> courseHeaderViews = redisGenericCacheService
+//                .getByPrefix("course:header:page"+req.getPage());
+
         Pageable pageable = PageRequest.of(
                 req.getPage(),
                 req.getPageSize(),
@@ -123,6 +144,10 @@ public class ICourseService implements CourseService {
         Page<CourseHeaderView> page = courseHeaderViewRepository.findAll(spec, pageable);
         List<CourseHeaderView> list = page.getContent();
 
+//        List<Integer> ids = list.stream()
+//                .map(CourseHeaderView::getId)
+//                .toList();
+//        redisGenericCacheService.cacheIdListAsJson("course:header:page:" + req.getPage(),ids, Duration.ofMinutes(30));
 
         return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
                 .result(courseHeaderMapper.convertToDtoList(list))

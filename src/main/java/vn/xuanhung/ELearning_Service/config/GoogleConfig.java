@@ -6,6 +6,7 @@ import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInsta
 import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.youtube.YouTube;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -33,14 +34,15 @@ public class GoogleConfig {
     public Credential authorize() throws Exception {
         // Tạo GoogleAuthorizationCodeFlow từ thông tin trong application.yml
         GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                GoogleNetHttpTransport.newTrustedTransport(),
-                JSON_FACTORY,
-                CLIENT_ID,
-                CLIENT_SECRET,
-                Collections.singletonList(SCOPE)
-        )
-        .setAccessType("offline")
-        .build();
+                    GoogleNetHttpTransport.newTrustedTransport(),
+                    JSON_FACTORY,
+                    CLIENT_ID,
+                    CLIENT_SECRET,
+                    Collections.singletonList(SCOPE)
+                )
+                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File("tokens")))
+                .setAccessType("offline")
+                .build();
         return new AuthorizationCodeInstalledApp(flow, new LocalServerReceiver.Builder()
                 .setPort(8080) // Đảm bảo cổng được dùng là chính xác
                 .setCallbackPath("/Callback") // Đảm bảo đường dẫn khớp với cấu hình trên Google Cloud

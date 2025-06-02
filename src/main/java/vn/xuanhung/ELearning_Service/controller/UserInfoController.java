@@ -46,4 +46,10 @@ public class UserInfoController {
         log.info("Log user controller - update user info");
         return userInfoService.update(req);
     }
+
+    @PostMapping("/update/v2")
+    public ApiResponse<UserInfoResponse> registerCourse2(@RequestBody UserInfoRequest req) {
+        log.info("Log user controller - update user info");
+        return userInfoService.update2(req);
+    }
 }

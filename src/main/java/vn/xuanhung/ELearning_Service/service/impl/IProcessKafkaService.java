@@ -24,20 +24,16 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
+import vn.xuanhung.ELearning_Service.dto.request.AuditLogRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CommentRequest;
 import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
 import vn.xuanhung.ELearning_Service.dto.response.CommentResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserCommentViewResponse;
+import vn.xuanhung.ELearning_Service.entity.*;
 import vn.xuanhung.ELearning_Service.entity.Comment;
-import vn.xuanhung.ELearning_Service.entity.Course;
-import vn.xuanhung.ELearning_Service.entity.Lesson;
-import vn.xuanhung.ELearning_Service.entity.UserInfo;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
-import vn.xuanhung.ELearning_Service.repository.CommentRepository;
-import vn.xuanhung.ELearning_Service.repository.CourseRepository;
-import vn.xuanhung.ELearning_Service.repository.LessonRepository;
-import vn.xuanhung.ELearning_Service.repository.UserInfoRepository;
+import vn.xuanhung.ELearning_Service.repository.*;
 
 import java.io.*;
 import java.math.BigDecimal;
@@ -53,6 +49,7 @@ public class IProcessKafkaService {
     LessonRepository lessonRepository;
     CommentRepository commentRepository;
     UserInfoRepository userInfoRepository;
+    AuditLogRepository auditLogRepository;
 
     ModelMapper modelMapper;
     YouTube youtube;
@@ -209,6 +206,27 @@ public class IProcessKafkaService {
             acknowledgment.acknowledge();
 
             template.convertAndSend("/topic/comment/" + message.getLessonId(), userCommentViewResponse);
+        }catch(Exception e){
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    @KafkaListener(
+            topics = AppConstant.Topic.WRITE_LOG,
+            groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void writeLog(ConsumerRecord<String, AuditLogRequest> consumerRecord, Acknowledgment acknowledgment) {
+        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.WRITE_LOG);
+
+        // Extract key and value from the ConsumerRecord
+        String key = consumerRecord.key(); // could be null
+        AuditLogRequest message = consumerRecord.value();
+        log.info("Received message with key: " + key);
+        log.info("Received message with value: " + message);
+
+        try{
+            auditLogRepository.saveAll(message.getAuditLogs());
+            acknowledgment.acknowledge();
         }catch(Exception e){
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }

@@ -26,6 +26,7 @@ public abstract class AppConstant {
         public static final String EMAIL_TOPIC = "email_topic";
         public static final String VIDEO_TOPIC = "video_topic";
         public static final String COMMENT_TOPIC = "comment_topic";
+        public static final String WRITE_LOG = "write_log";
     }
 
     public static final class Level{

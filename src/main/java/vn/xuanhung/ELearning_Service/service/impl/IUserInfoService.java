@@ -10,12 +10,14 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.BaseRequest;
+import vn.xuanhung.ELearning_Service.common.ModelMapperUtil;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
@@ -53,6 +55,7 @@ public class IUserInfoService implements UserInfoService {
     LessonRepository lessonRepository;
     ArticleUserViewRepository articleUserViewRepository;
     CourseHeaderViewRepository courseHeaderViewRepository;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     ModelMapper modelMapper;
 
@@ -188,6 +191,29 @@ public class IUserInfoService implements UserInfoService {
     }
 
 
+    @Override
+    public ApiResponse<UserInfoResponse> update2(UserInfoRequest req) {
+        if(req.getId() != null){
+            UserInfo userInfo = userInfoRepository.findById(req.getId())
+                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
+            List<AuditLog> auditLogs = ModelMapperUtil.mapWithLog(req, userInfo, modelMapper);
+           // modelMapper.map(req, userInfo);
 
+            userInfo = userInfoRepository.save(userInfo);
+
+            if(auditLogs != null) {
+                AuditLogRequest auditLogRequest = AuditLogRequest.builder()
+                        .auditLogs(auditLogs)
+                        .build();
+                log.info("Dto log: {}", auditLogs);
+                kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
+            }
+            return ApiResponse.<UserInfoResponse>builder()
+                    .result(modelMapper.map(userInfo, UserInfoResponse.class))
+                    .build();
+        }else{
+            return null;
+        }
+    }
 
 }

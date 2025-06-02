@@ -20,4 +20,6 @@ public interface UserInfoService  {
     ApiResponsePagination<List<UserInfoResponse>> getAll(BaseRequest req);
 
     ApiResponse<UserInfoResponse> update(UserInfoRequest req);
+
+    ApiResponse<UserInfoResponse> update2(UserInfoRequest req);
 }
