@@ -1,6 +1,7 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import jakarta.annotation.PostConstruct;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -23,10 +24,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
-import vn.xuanhung.ELearning_Service.common.ApiResponse;
-import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
-import vn.xuanhung.ELearning_Service.common.Base64DecodedMultipartFile;
-import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
+import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.controller.CategoryController;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
@@ -34,6 +32,7 @@ import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.entity.Article;
+import vn.xuanhung.ELearning_Service.entity.Category;
 import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
@@ -59,8 +58,7 @@ public class IArticleService implements ArticleService {
     ArticleUserViewRepository articleUserViewRepository;
     UserInfoRepository articleUserRepository;
     ModelMapper modelMapper;
-    RedisGenericCacheService<ArticleUserView> redisGenericCacheService;
-    RedisGenericCacheService<Article> redisGenericCacheService1;
+    RedisCacheFactory redisCacheFactory;
 
     S3Client s3Client;
     private final CategoryController categoryController;
@@ -73,25 +71,12 @@ public class IArticleService implements ArticleService {
     @Value("${aws.folder}")
     String AWS_FOLDER;
 
+    @NonFinal
+    String PREFIX_ARTICLE = "article:user";
+
     @Override
     public ApiResponsePagination<List<ArticleResponse>> findAll(ArticleRequest request) {
         log.info("***Log article service - get all article by pagination***");
-//        if(request.getId() != null){
-//            redisGenericCacheService1.setClazz(Article.class);
-//            redisGenericCacheService1.setPrefix("article");
-//            redisGenericCacheService1.setDbLoaderById(id -> articleRepository.findById(request.getId()).orElse(null));
-//            Optional<Article> article = redisGenericCacheService1.getById(request.getId(), Duration.ofMinutes(5));
-//            log.info("data");
-//            List<ArticleResponse> data = new ArrayList<>();
-//            Article
-//            modelMapper.map(article.get() , ArticleResponse.class);
-//            data.add(article);
-//
-//            return ApiResponsePagination.<List<ArticleResponse>>builder()
-//                    .result(data)
-//                    .build();
-//        }
-
         Pageable pageable = PageRequest.of(
                 request.getPage(),
                 request.getPageSize(),
@@ -115,9 +100,10 @@ public class IArticleService implements ArticleService {
     public ApiResponsePagination<List<ArticleUserViewResponse>> getArticleUserView(ArticleUserViewRequest req) {
         log.info("***Log article service - get all article by pagination***");
         if(req.getId() != null){
-            redisGenericCacheService.setClazz(ArticleUserView.class);
-            redisGenericCacheService.setPrefix("article:user");
+            RedisGenericCacheService<ArticleUserView> redisGenericCacheService = redisCacheFactory
+                    .create(PREFIX_ARTICLE, ArticleUserView.class);
             redisGenericCacheService.setDbLoaderById(id -> articleUserViewRepository.findById(req.getId()).orElse(null));
+
             ArticleUserView article = redisGenericCacheService.getById(req.getId(), Duration.ofMinutes(5)).get();
             List<ArticleUserViewResponse> data = new ArrayList<>();
             data.add(modelMapper.map(article , ArticleUserViewResponse.class));

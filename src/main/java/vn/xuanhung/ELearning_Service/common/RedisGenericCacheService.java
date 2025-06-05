@@ -1,6 +1,8 @@
 package vn.xuanhung.ELearning_Service.common;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JavaType;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
@@ -15,8 +17,6 @@ import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Function;
 
-@Service
-@RequiredArgsConstructor
 @Setter
 @Getter
 @Slf4j
@@ -32,6 +32,12 @@ public class RedisGenericCacheService<T> {
     // Class<T> để deserialize JSON về object generic đúng kiểu
     private Class<T> clazz;
 
+    public RedisGenericCacheService(RedisTemplate<String, String> redisTemplate, ObjectMapper objectMapper, String prefix, Class<T> clazz) {
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
+        this.prefix = prefix;
+        this.clazz = clazz;
+    }
     // Random TTL ± phần trăm, ví dụ ±10%
     private Duration randomizeTTL(Duration baseTTL, double percent) {
         long millis = baseTTL.toMillis();
@@ -71,32 +77,23 @@ public class RedisGenericCacheService<T> {
         }
     }
 
-    public void cacheIdListAsJson(String key, List<Integer> ids, Duration ttl) {
+    public List<T> getByPrefix() {
         try {
-            String json = objectMapper.writeValueAsString(ids);
-            redisTemplate.opsForValue().set(key, json,  randomizeTTL(ttl, 0.1));
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to serialize and cache ID list", e);
-        }
-    }
-
-    public List<Optional<T>> getByPrefix(String prefix){
-        try{
             String cachedJson = redisTemplate.opsForValue().get(prefix);
 
             if (cachedJson == null || cachedJson.isEmpty()) {
-                return List.of(); // hoặc return Collections.emptyList();
+                return List.of();
             }
 
-            List<Integer> data = objectMapper.readValue(cachedJson, objectMapper.getTypeFactory()
-                    .constructCollectionType(List.class, Integer.class));
-
+            JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, clazz);
+            return objectMapper.readValue(cachedJson, type);
 
         } catch (Exception e) {
-            log.error("Error in prefix:  {}", prefix);
+            log.error("Error in prefix: {}", prefix, e);
         }
         return List.of();
     }
+
 
     public void saveItem(Integer id, T item, Duration baseTTL) {
         try {
@@ -115,6 +112,44 @@ public class RedisGenericCacheService<T> {
         } catch (Exception e) {
             log.error("Error saving item with id {}", id, e);
         }
+    }
+
+    public void saveItemList(List<T> item, Duration baseTTL) {
+        try {
+            String json = objectMapper.writeValueAsString(item);
+            Duration ttl = randomizeTTL(baseTTL, 0.1);
+            redisTemplate.opsForValue().set(prefix, json, ttl);
+
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize item with id",  e);
+        } catch (Exception e) {
+            log.error("Error saving item with id",  e);
+        }
+    }
+
+    public void cacheIdListAsJson(String key, List<Integer> ids, Duration ttl) {
+        try {
+            String json = objectMapper.writeValueAsString(ids);
+            redisTemplate.opsForValue().set(key, json,  randomizeTTL(ttl, 0.1));
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to serialize and cache ID list", e);
+        }
+    }
+
+    public List<T> getByPrefix(String prefix){
+        try{
+            String cachedJson = redisTemplate.opsForValue().get(prefix);
+
+            if (cachedJson.isEmpty() && cachedJson != null) {
+                return List.of(); // hoặc return Collections.emptyList();
+            }
+
+            List<Integer> data = objectMapper.readValue(cachedJson, objectMapper.getTypeFactory()
+                    .constructCollectionType(List.class, Integer.class));
+        } catch (Exception e) {
+            log.error("Error in prefix:  {}", prefix);
+        }
+        return List.of();
     }
 
     public void invalidateById(String id) {

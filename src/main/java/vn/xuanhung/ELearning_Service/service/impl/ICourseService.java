@@ -32,10 +32,7 @@ import software.amazon.awssdk.services.s3.S3AsyncClient;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
-import vn.xuanhung.ELearning_Service.common.ApiResponse;
-import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
-import vn.xuanhung.ELearning_Service.common.ParseHelper;
-import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
+import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
@@ -93,7 +90,7 @@ public class ICourseService implements CourseService {
     YouTube youTube;
     KafkaTemplate<String, Object> kafkaTemplate;
 
-    RedisGenericCacheService<CourseHeaderView> redisGenericCacheService;
+    RedisCacheFactory redisCacheFactory;
     ObjectMapper objectMapper;
 
     @NonFinal
@@ -109,6 +106,9 @@ public class ICourseService implements CourseService {
         return null;
     }
 
+    @NonFinal
+    String PREFIX_CATEROGY = "course:header";
+
     @Override
     public ApiResponse<CourseResponse> findById(Integer integer) {
         return null;
@@ -118,8 +118,9 @@ public class ICourseService implements CourseService {
     public ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(CourseHeaderViewRequest req) {
         log.info("***Log course service - get header course ***");
         if(req.getCourseId() != null){
-            redisGenericCacheService.setClazz(CourseHeaderView.class);
-            redisGenericCacheService.setPrefix("course:header");
+            RedisGenericCacheService<CourseHeaderView> redisGenericCacheService = redisCacheFactory
+                    .create(PREFIX_CATEROGY, CourseHeaderView.class);
+
             redisGenericCacheService.setDbLoaderById(id -> courseHeaderViewRepository.findById(req.getCourseId()).orElse(null));
             Optional<CourseHeaderView> courseHeaderView = redisGenericCacheService.getById(req.getCourseId(), Duration.ofMinutes(30));
             log.info("data");
@@ -307,7 +308,24 @@ public class ICourseService implements CourseService {
 
             modelMapper.map(req, entitySave);
             entitySave.setPriceAfterReduce(setPriceAfterDiscount(req, entitySave));
-        }else{
+
+            if(req.getCertificateName() != null){
+                if(entitySave.getCertificateId() != null){
+                    Certificate certificate = certificateRepository.findById(entitySave.getCertificateId())
+                            .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+                    certificate.setCertificateName(req.getCertificateName());
+                }else{
+                    Certificate certificate = Certificate.builder()
+                            .certificateName(req.getCertificateName())
+                            .certificateLevel(entitySave.getLevel())
+                            .validityPeriod(BigDecimal.valueOf(3))//3 month
+                            .build();
+                    certificate = certificateRepository.save(certificate);
+                    entitySave.setCertificateId(certificate.getId());
+                }
+            }
+        }else {
             if(!categoryRepository.existsById(req.getCategoryId())  ){
                 throw new AppException(ErrorCode.NOT_ENOUGH_INFO);
             }
@@ -334,54 +352,56 @@ public class ICourseService implements CourseService {
             certificate = certificateRepository.save(certificate);
 
             entitySave.setCertificateId(certificate.getId());
+            entitySave.setIsActive("Y");
         }
 
-        entitySave.setIsActive("Y");
         entitySave = courseRepository.saveAndFlush(entitySave);
-        String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
-        String playlistId = createPlaylist(entitySave.getCourseName(), entitySave.getDescription());
 
-        log.info("Send kafka upload video: {}", fileTemp);
-        kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
-                KafkaUploadVideoDto.builder()
-                        .s3Url(fileTemp)
+        if(req.getId() != null) {
+            String playlistId = createPlaylist(entitySave.getCourseName(), entitySave.getDescription());
+            String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
+            log.info("Send kafka upload video: {}", fileTemp);
+            kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                    KafkaUploadVideoDto.builder()
+                            .s3Url(fileTemp)
 //                        .video(req.getTrailer())
-                        .courseId(entitySave.getId())
-                        .playlistId(playlistId)
-                        .title(entitySave.getCourseName())
-                        .description(entitySave.getDescription())
-                        .build());
+                            .courseId(entitySave.getId())
+                            .playlistId(playlistId)
+                            .title(entitySave.getCourseName())
+                            .description(entitySave.getDescription())
+                            .build());
 
-        if(req.getLessons() != null && !req.getLessons().isEmpty()){
-            Integer id = entitySave.getId();
-            req.getLessons().forEach((lesson) -> {
-                try {
-                    Lesson lesson1 = Lesson.builder()
-                            .courseId(id)
-                            .lessonName(lesson.getLessonName())
-                            .lessonTime(lesson.getLessonTime())
-                            .isActive("Y")
-                            .description(lesson.getDescription())
-                            .build();
+            if(req.getLessons() != null && !req.getLessons().isEmpty()){
+                Integer id = entitySave.getId();
+                req.getLessons().forEach((lesson) -> {
+                    try {
+                        Lesson lesson1 = Lesson.builder()
+                                .courseId(id)
+                                .lessonName(lesson.getLessonName())
+                                .lessonTime(lesson.getLessonTime())
+                                .isActive("Y")
+                                .description(lesson.getDescription())
+                                .build();
 
-                    lesson1 = lessonRepository.saveAndFlush(lesson1);
+                        lesson1 = lessonRepository.saveAndFlush(lesson1);
 
-                    String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
-                    log.info("Send kafka upload video: {}", fileTempLesson);
-                    kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
-                            KafkaUploadVideoDto.builder()
-                                    .s3Url(fileTempLesson)
+                        String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
+                        log.info("Send kafka upload video: {}", fileTempLesson);
+                        kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                                KafkaUploadVideoDto.builder()
+                                        .s3Url(fileTempLesson)
 //                                    .video(lesson.getUrlLesson())
-                                    .lessonId(lesson1.getId())
-                                    .playlistId(playlistId)
-                                    .title(lesson1.getLessonName())
-                                    .description(lesson1.getDescription())
-                                    .build());
-                }catch (Exception e){
-                    log.error("Error: {}", e.getMessage());
-                    throw new AppException(ErrorCode.SYSTEM_ERROR);
-                }
-            });
+                                        .lessonId(lesson1.getId())
+                                        .playlistId(playlistId)
+                                        .title(lesson1.getLessonName())
+                                        .description(lesson1.getDescription())
+                                        .build());
+                    }catch (Exception e){
+                        log.error("Error: {}", e.getMessage());
+                        throw new AppException(ErrorCode.SYSTEM_ERROR);
+                    }
+                });
+            }
         }
 
         return ApiResponse.<CourseResponse>builder()
@@ -446,6 +466,8 @@ public class ICourseService implements CourseService {
                         .multiply(BigDecimal.ONE.subtract(discount.getDiscountRate().divide(BigDecimal.valueOf(100))));
 
                 return priceAfterReduce;
+            }else{
+                throw new AppException(ErrorCode.DISCOUNT_NOT_EXIST);
             }
         }
         return entitySave.getPriceEntered();
