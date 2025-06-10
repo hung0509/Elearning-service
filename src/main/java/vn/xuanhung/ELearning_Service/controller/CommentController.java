@@ -44,6 +44,14 @@ public class CommentController {
         return ApiResponse.<Void>builder().build();
     }
 
+    @DeleteMapping("/{id}")
+    @ResponseBody
+    public ApiResponse<Integer> delete(@PathVariable Integer id) {
+        log.info("*Log controller comment - delete comment*");
+
+        return commentService.deleteCommentById(id);
+    }
+
     //    -------------- WebSocket API ----------------
     @MessageMapping("/send-message")
     public void broadcastGroupMessage(@Payload UserCommentViewResponse message) {

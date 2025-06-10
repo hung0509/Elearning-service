@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 public class BaseRequest {
     int page= 0;
-    int pageSize= 10;
+    int pageSize= 100;
     String order= "desc";
     String sortBy= "created";
 }

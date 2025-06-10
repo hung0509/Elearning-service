@@ -43,7 +43,8 @@ public enum ErrorCode {
     QUESTION_EMPTY(12378, "Not find question", HttpStatus.BAD_REQUEST),
     ANSWER_EMPTY(12378, "Not find answer", HttpStatus.BAD_REQUEST),
     INVALID_ANSWER_COUNT(12400, "Have one correct answer", HttpStatus.BAD_REQUEST),
-    ACCOUNT_NOT_ACTIVE(12222, "Please active account!", HttpStatus.OK)
+    ACCOUNT_NOT_ACTIVE(12222, "Please active account!", HttpStatus.OK),
+    USER_NOT_REGISTER(12225, "Người dùng chưa đăng ký khóa học này", HttpStatus.BAD_REQUEST)
     ;
 
     int code;

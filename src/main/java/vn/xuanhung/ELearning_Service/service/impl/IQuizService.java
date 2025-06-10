@@ -7,6 +7,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.shaded.com.google.protobuf.Api;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
@@ -37,6 +38,8 @@ public class IQuizService implements QuizService {
     UserInfoRepository userInfoRepository;
     UserQuizRepository userQuizRepository;
     AnswerRepository answerRepository;
+
+    KafkaTemplate<String, Object> kafkaTemplate;
     ModelMapper modelMapper;
 
     @Override
@@ -89,6 +92,14 @@ public class IQuizService implements QuizService {
             }else{
                 throw new AppException(ErrorCode.QUESTION_EMPTY);
             }
+
+            //Clear key voi course da thay doi
+            log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+            kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                    .courseId(req.getCourseId())
+                    .action(AppConstant.ACTION.INVALIDATE)
+                    .build());
+
             QuizDetailResponse response = QuizDetailResponse.builder()
                     .id(quiz.getId())
                     .title(quiz.getTitle())
@@ -112,6 +123,14 @@ public class IQuizService implements QuizService {
         quiz.setIsActive(AppConstant.STATUS_UNACTIVE);
 
         quiz = quizRepository.save(quiz);
+
+        //Clear key voi course da thay doi
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(quiz.getCourseId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
+
         return ApiResponse.<QuizHeaderResponse>builder()
                 .result(modelMapper.map(quiz, QuizHeaderResponse.class))
                 .build();

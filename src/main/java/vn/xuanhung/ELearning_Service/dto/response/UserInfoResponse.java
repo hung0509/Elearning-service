@@ -27,4 +27,5 @@ public class UserInfoResponse {
     Date createdAt;
     List<CourseHeaderViewResponse> courses;
     List<ArticleUserViewResponse> articles;
+    List<CertificateResponse> certificates;
 }

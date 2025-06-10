@@ -1,12 +1,10 @@
-package vn.xuanhung.ELearning_Service.dto.request;
+package vn.xuanhung.ELearning_Service.dto.response;
 
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import vn.xuanhung.ELearning_Service.common.BaseRequest;
 
 import java.math.BigDecimal;
-import java.util.Date;
 
 @Slf4j
 @Data
@@ -14,11 +12,14 @@ import java.util.Date;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class DiscountRequest extends BaseRequest {
+public class CourseUpdateResponse {
     Integer id;
+    Integer categoryId;
+    String courseName;
+    String description;
+    BigDecimal priceEntered;
     String discountCode;
-    String discountDescription;
-    BigDecimal discountRate;
     String isActive;
-    String expiredDate;
+    String certificateName;
+    String level;
 }

@@ -1,7 +1,5 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.S3Object;
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.model.*;
@@ -13,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -20,24 +19,28 @@ import org.springframework.stereotype.Service;
 import software.amazon.awssdk.core.ResponseInputStream;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.DeleteObjectResponse;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.common.RedisCacheFactory;
+import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
-import vn.xuanhung.ELearning_Service.dto.request.AuditLogRequest;
-import vn.xuanhung.ELearning_Service.dto.request.CommentRequest;
-import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
-import vn.xuanhung.ELearning_Service.dto.response.CommentResponse;
-import vn.xuanhung.ELearning_Service.dto.response.UserCommentViewResponse;
+import vn.xuanhung.ELearning_Service.dto.request.*;
+import vn.xuanhung.ELearning_Service.dto.response.*;
 import vn.xuanhung.ELearning_Service.entity.*;
 import vn.xuanhung.ELearning_Service.entity.Comment;
+import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
+import vn.xuanhung.ELearning_Service.helper.UserInfoHelper;
 import vn.xuanhung.ELearning_Service.repository.*;
+import vn.xuanhung.ELearning_Service.repository.view.ArticleUserViewRepository;
 
-import java.io.*;
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -50,10 +53,14 @@ public class IProcessKafkaService {
     CommentRepository commentRepository;
     UserInfoRepository userInfoRepository;
     AuditLogRepository auditLogRepository;
+    RedisCacheFactory redisCacheFactory;
+    ArticleUserViewRepository articleUserViewRepository;
+    UserInfoHelper userInfoHelper;
 
     ModelMapper modelMapper;
     YouTube youtube;
     S3Client s3Client;
+    RedisTemplate<String, String> redisTemplate;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -231,6 +238,147 @@ public class IProcessKafkaService {
             throw new AppException(ErrorCode.UNAUTHENTICATED);
         }
     }
+
+    @KafkaListener(
+            topics = AppConstant.Topic.USER_CACHE_UPDATE_EVENT,
+            groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void cacheUpdateUser(ConsumerRecord<String, UserInfoCacheUpdateEvent> consumerRecord, Acknowledgment acknowledgment) {
+        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.USER_CACHE_UPDATE_EVENT);
+
+        // Extract key and value from the ConsumerRecord
+        String key = consumerRecord.key(); // could be null
+        UserInfoCacheUpdateEvent message = consumerRecord.value();
+        log.info("Received message with key: " + key);
+        log.info("Received message with value: " + message);
+
+        try{
+            //Xóa Cache
+            Integer id = message.getUserId();
+
+            RedisGenericCacheService<UserInfoResponse> redisGenericCacheService = redisCacheFactory
+                    .create(AppConstant.PREFIX.USER_INFO , UserInfoResponse.class);
+            redisGenericCacheService.invalidateById(id);
+
+            UserInfoResponse userInfoResponse = userInfoHelper.buildUserInfoResponse(id);
+
+            log.info("REBUILD");
+            redisGenericCacheService.saveItem(id, userInfoResponse, Duration.ofDays(1));
+
+            acknowledgment.acknowledge();
+        }catch(Exception e){
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    @KafkaListener(
+            topics = AppConstant.Topic.ARTICLE_UPDATE_EVENT,
+            groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void cacheUpdateArticle(ConsumerRecord<String, ArticleCacheUpdateEvent> consumerRecord, Acknowledgment acknowledgment) {
+        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.ARTICLE_UPDATE_EVENT);
+
+        // Extract key and value from the ConsumerRecord
+        String key = consumerRecord.key(); // could be null
+        ArticleCacheUpdateEvent message = consumerRecord.value();
+        log.info("Received message with key: " + key);
+        log.info("Received message with value: " + message);
+
+        try{
+            //Xóa Cache
+            Integer articleId = message.getArticleId();
+
+            RedisGenericCacheService<ArticleUserView> redisGenericCacheService = redisCacheFactory
+                    .create(AppConstant.PREFIX.ARTICLE, ArticleUserView.class);
+
+            redisGenericCacheService.invalidateById(articleId);
+            redisGenericCacheService.setDbLoaderById(id -> articleUserViewRepository.findById(id).orElse(null));
+            redisGenericCacheService.getById(articleId, Duration.ofMinutes(5));
+
+            acknowledgment.acknowledge();
+        }catch(Exception e){
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    @KafkaListener(
+            topics = AppConstant.Topic.COURSE_SAVE_EVENT,
+            groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void cacheAllCourse(ConsumerRecord<String, CourseCacheUpdateEvent> consumerRecord, Acknowledgment acknowledgment) {
+        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.COURSE_SAVE_EVENT);
+
+        // Extract key and value from the ConsumerRecord
+        String key = consumerRecord.key(); // could be null
+        CourseCacheUpdateEvent message = consumerRecord.value();
+        log.info("Received message with key: " + key);
+        log.info("Received message with value: " + message);
+
+        try{
+            //Delete All course
+            clearAllCourseDetailCache();
+
+            acknowledgment.acknowledge();
+        }catch(Exception e){
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    @KafkaListener(
+            topics = AppConstant.Topic.COURSE_UPDATE_EVENT,
+            groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory"
+    )
+    public void cacheUpdateCourse(ConsumerRecord<String, CourseCacheUpdateEvent> consumerRecord, Acknowledgment acknowledgment) {
+        log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.COURSE_UPDATE_EVENT);
+
+        // Extract key and value from the ConsumerRecord
+        String key = consumerRecord.key(); // could be null
+        CourseCacheUpdateEvent message = consumerRecord.value();
+        log.info("Received message with key: " + key);
+        log.info("Received message with value: " + message);
+
+        try{
+            //Xóa Cache
+            Integer courseId = message.getCourseId();
+
+            clearCourseDetailCacheByCourseId(courseId);
+
+            acknowledgment.acknowledge();
+        }catch(Exception e){
+            throw new AppException(ErrorCode.UNAUTHENTICATED);
+        }
+    }
+
+    private void clearCourseDetailCacheByCourseId(Integer courseId) {
+        String setKey = AppConstant.PREFIX.COURSE_DETAIL + ":set:" + courseId;
+        Set<String> keys = redisTemplate.opsForSet().members(setKey);
+
+        if (keys != null && !keys.isEmpty()) {
+            redisTemplate.delete(keys);        // Xóa từng cache key
+            redisTemplate.delete(setKey);      // Xóa luôn set tracking
+        }
+    }
+
+    private void clearAllCourseDetailCache() {
+        String pattern = "course:detail:set:*";
+
+        Set<String> setKeys = redisTemplate.keys(pattern);
+        if (setKeys == null || setKeys.isEmpty()) return;
+
+        for (String setKey : setKeys) {
+            // 2. Lấy tất cả course detail keys từ set
+            Set<String> detailKeys = redisTemplate.opsForSet().members(setKey);
+            if (detailKeys != null && !detailKeys.isEmpty()) {
+                // 3. Xóa từng course detail key
+                redisTemplate.delete(detailKeys);
+            }
+            // 4. Xóa luôn Set key
+            redisTemplate.delete(setKey);
+        }
+    }
+
+
+
     //    @KafkaListener(topics = AppConstant.Topic.VIDEO_TOPIC, groupId = "gr-sync-order", containerFactory = "kafkaListenerContainerFactory")
 //    private void uploadVideoAtYoutube(ConsumerRecord<String, KafkaUploadVideoDto> consumerRecord, Acknowledgment acknowledgment) throws Exception {
 //        // Tạo Metadata cho video

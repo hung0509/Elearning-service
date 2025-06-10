@@ -6,4 +6,5 @@ import vn.xuanhung.ELearning_Service.entity.UserLesson;
 
 @Repository
 public interface UserLessonRepository extends JpaRepository<UserLesson, Integer> {
+    UserLesson findByLessonIdAndUserId(Integer lessonId, Integer userId);
 }

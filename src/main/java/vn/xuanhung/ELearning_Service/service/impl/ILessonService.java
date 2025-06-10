@@ -15,12 +15,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
+import vn.xuanhung.ELearning_Service.dto.request.CourseCacheUpdateEvent;
 import vn.xuanhung.ELearning_Service.dto.request.LessonRequest;
+import vn.xuanhung.ELearning_Service.dto.request.LessonUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.response.LessonResponse;
 import vn.xuanhung.ELearning_Service.entity.Lesson;
 import vn.xuanhung.ELearning_Service.exception.AppException;
@@ -39,6 +42,8 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ILessonService implements LessonService {
     LessonRepository lessonRepository;
+
+    KafkaTemplate<String, Object> kafkaTemplate;
     YouTube youtube;
     ModelMapper modelMapper;
 
@@ -76,6 +81,7 @@ public class ILessonService implements LessonService {
     public ApiResponse<LessonResponse> save(LessonRequest req) {
         log.info("***Log lesson service - get save lesson ***");
         Lesson lesson = modelMapper.map(req, Lesson.class);
+        lesson.setIsActive("Y");
 
         try {
             lesson.setUrlLesson(uploadVideo(req.getUrlLesson(), req.getLessonName(), req.getDescription()));
@@ -84,6 +90,11 @@ public class ILessonService implements LessonService {
         }
 
         lessonRepository.save(lesson);
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(lesson.getCourseId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
         return ApiResponse.<LessonResponse>builder()
                 .result(modelMapper.map(lesson, LessonResponse.class))
                 .build();
@@ -97,13 +108,19 @@ public class ILessonService implements LessonService {
 
         lesson.setIsActive(AppConstant.STATUS_UNACTIVE);
         lessonRepository.save(lesson);
+
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(lesson.getCourseId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
         return ApiResponse.<String>builder()
                 .result("Lesson status update successful!!!")
                 .build();
     }
 
     @Override
-    public ApiResponse<Void> update(LessonRequest lessonRequest, Integer id) {
+    public ApiResponse<LessonResponse> update(LessonUpdateRequest lessonRequest, Integer id) {
         log.info("***Log lesson service - get update lesson ***");
         Lesson lesson = null;
         if(id != null) {
@@ -111,8 +128,15 @@ public class ILessonService implements LessonService {
         }
 
         modelMapper.map(lessonRequest, lesson);
-        lessonRepository.save(lesson);
-        return ApiResponse.<Void>builder()
+        lesson = lessonRepository.save(lesson);
+
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(lesson.getCourseId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
+        return ApiResponse.<LessonResponse>builder()
+                .result(modelMapper.map(lesson, LessonResponse.class))
                 .build();
     }
 

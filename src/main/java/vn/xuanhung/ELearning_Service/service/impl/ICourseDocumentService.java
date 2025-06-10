@@ -9,6 +9,7 @@ import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -18,6 +19,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.CategoryRequest;
+import vn.xuanhung.ELearning_Service.dto.request.CourseCacheUpdateEvent;
 import vn.xuanhung.ELearning_Service.dto.request.CourseDocumentRequest;
 import vn.xuanhung.ELearning_Service.dto.response.CategoryResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseDocumentResponse;
@@ -39,6 +41,7 @@ public class ICourseDocumentService implements CourseDocumentService {
 
     S3Client s3Client;
     ModelMapper modelMapper;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -58,6 +61,12 @@ public class ICourseDocumentService implements CourseDocumentService {
             modelMapper.map(req, entity);
 
             entity = courseDocumentRepository.save(entity);
+            log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+            kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                    .courseId(entity.getCourseId())
+                    .action(AppConstant.ACTION.INVALIDATE)
+                    .build());
+
             return ApiResponse.<CourseDocumentResponse>builder()
                     .result(modelMapper.map(entity, CourseDocumentResponse.class))
                     .build();
@@ -79,6 +88,13 @@ public class ICourseDocumentService implements CourseDocumentService {
             entity.setIsActive("Y");
 
             entity = courseDocumentRepository.save(entity);
+
+            log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+            kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                    .courseId(entity.getCourseId())
+                    .action(AppConstant.ACTION.INVALIDATE)
+                    .build());
+
             return ApiResponse.<CourseDocumentResponse>builder()
                     .result(modelMapper.map(entity, CourseDocumentResponse.class))
                     .build();
@@ -92,6 +108,12 @@ public class ICourseDocumentService implements CourseDocumentService {
 
         document.setIsActive(AppConstant.STATUS_UNACTIVE);
         document = courseDocumentRepository.save(document);
+
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(document.getCourseId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
 
         return ApiResponse.<CourseDocumentResponse>builder()
                 .result(modelMapper.map(document, CourseDocumentResponse.class))

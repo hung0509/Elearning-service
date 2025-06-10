@@ -10,6 +10,7 @@ import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.BaseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserCourseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserInfoRequest;
+import vn.xuanhung.ELearning_Service.dto.request.UserLessonRequest;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.service.UserInfoService;
 
@@ -39,6 +40,12 @@ public class UserInfoController {
     public ApiResponse<String> registerCourse(@RequestBody UserCourseRequest req) {
         log.info("Log user controller - register course");
         return userInfoService.registerCourse(req);
+    }
+
+    @PostMapping("/learning")
+    public ApiResponse<String> learning(@RequestBody UserLessonRequest req) {
+        log.info("Log user controller - learn lesson");
+        return userInfoService.learnLesson(req);
     }
 
     @PostMapping("/update")

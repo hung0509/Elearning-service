@@ -65,6 +65,7 @@ public class IDiscountService implements DiscountService {
     public ApiResponse<DiscountResponse> save(DiscountRequest req) {
         log.info("***Log discount service - save discount***");
         Discount discount = modelMapper.map(req, Discount.class);
+        discount.setIsActive("Y");
         discount = discountRepository.save(discount);
 
         return ApiResponse.<DiscountResponse>builder()

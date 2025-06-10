@@ -26,6 +26,9 @@ public class UserLesson extends AbstractMappedEntity{
     @Column(name = "lesson_id")
     Integer lessonId;
 
+    @Column(name = "course_id")
+    Integer courseId;
+
     @Column(name = "status")
     String status;
 }

@@ -12,17 +12,16 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.CommentRequest;
-import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserCommentViewResponse;
-import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
+import vn.xuanhung.ELearning_Service.entity.Comment;
 import vn.xuanhung.ELearning_Service.entity.view.UserCommentView;
 import vn.xuanhung.ELearning_Service.repository.CommentRepository;
 import vn.xuanhung.ELearning_Service.repository.view.UserCommentViewRepository;
 import vn.xuanhung.ELearning_Service.service.CommentService;
-import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 import vn.xuanhung.ELearning_Service.specification.UserCommentViewSpecification;
 
 import java.util.List;
@@ -34,6 +33,7 @@ import java.util.concurrent.ExecutionException;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ICommentSerivce implements CommentService {
     UserCommentViewRepository userCommentViewRepository;
+    CommentRepository commentRepository;
     ModelMapper modelMapper;
     KafkaTemplate<String, Object> kafkaTemplate;
 
@@ -47,6 +47,19 @@ public class ICommentSerivce implements CommentService {
             throw new RuntimeException(e);
         }
     }
+
+   @Override
+   public ApiResponse<Integer> deleteCommentById(Integer id){
+       log.info("***Log comment service - delete comment ***");
+       Comment comment = commentRepository.findById(id).orElse(null);
+       if(comment != null){
+           comment.setIsActive("N");
+           commentRepository.save(comment);
+       }
+       return ApiResponse.<Integer>builder()
+               .result(id)
+               .build();
+   }
 
     @Override
     public ApiResponsePagination<List<UserCommentViewResponse>> getAll(CommentRequest req) {

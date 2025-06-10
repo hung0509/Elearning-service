@@ -11,9 +11,11 @@ import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
+import vn.xuanhung.ELearning_Service.dto.request.CourseUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.response.CourseDetailViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseResponse;
+import vn.xuanhung.ELearning_Service.dto.response.CourseUpdateResponse;
 import vn.xuanhung.ELearning_Service.service.CourseService;
 
 import java.util.List;
@@ -30,6 +32,12 @@ public class CourseController {
         public ApiResponse<CourseResponse> addCourse(@ModelAttribute CourseRequest req) {
         log.info("*Log controller course - save course*");
         return courseService.save(req);
+    }
+
+    @PutMapping
+    public ApiResponse<CourseUpdateResponse> update(@RequestBody CourseUpdateRequest req) {
+        log.info("*Log controller course - update course*");
+        return courseService.update(req);
     }
 
     @GetMapping

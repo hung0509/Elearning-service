@@ -1,5 +1,6 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
+import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -10,17 +11,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
-import vn.xuanhung.ELearning_Service.common.ApiResponse;
-import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
-import vn.xuanhung.ELearning_Service.common.BaseRequest;
-import vn.xuanhung.ELearning_Service.common.ModelMapperUtil;
+import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
+import vn.xuanhung.ELearning_Service.dto.response.CertificateResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.entity.*;
@@ -29,6 +30,7 @@ import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
 import vn.xuanhung.ELearning_Service.entity.view.CourseRegisterView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
+import vn.xuanhung.ELearning_Service.helper.UserInfoHelper;
 import vn.xuanhung.ELearning_Service.jwt.UserDetailCustom;
 import vn.xuanhung.ELearning_Service.repository.*;
 import vn.xuanhung.ELearning_Service.repository.view.ArticleUserViewRepository;
@@ -39,8 +41,11 @@ import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
 import java.math.BigDecimal;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -55,9 +60,12 @@ public class IUserInfoService implements UserInfoService {
     LessonRepository lessonRepository;
     ArticleUserViewRepository articleUserViewRepository;
     CourseHeaderViewRepository courseHeaderViewRepository;
-    KafkaTemplate<String, Object> kafkaTemplate;
+    UserInfoHelper userInfoHelper;
 
+    KafkaTemplate<String, Object> kafkaTemplate;
+    JdbcTemplate jdbcTemplate;
     ModelMapper modelMapper;
+    RedisCacheFactory redisCacheFactory;
 
 
     @Override
@@ -66,27 +74,20 @@ public class IUserInfoService implements UserInfoService {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetailCustom userDetails) {
             Integer id =  userDetails.getUserId(); // Retrieve the userId
-            UserInfo userInfo = userInfoRepository.findById(id)
-                    .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
-            UserInfoResponse userInfoResponse =  modelMapper.map(userInfo, UserInfoResponse.class);
 
-            //Get article have created by UserId
-            Pageable pageable = PageRequest.of(0, 100,
-                    Sort.by(Sort.Direction.DESC, "createdAt"));
-            ArticleUserViewRequest req = ArticleUserViewRequest.builder()
-                    .instructorId(id)
-                    .build();
-            Specification<ArticleUserView> spec = ArticleUserViewSpecification.getSpecification(req);
-            Page<ArticleUserView> page = articleUserViewRepository.findAll(spec, pageable);
+            RedisGenericCacheService<UserInfoResponse> redisGenericCacheService = redisCacheFactory
+                    .create(AppConstant.PREFIX.USER_INFO , UserInfoResponse.class);
 
-            userInfoResponse.setArticles(page.getContent().stream()
-                    .map(item -> modelMapper.map(item, ArticleUserViewResponse.class)).toList());
+            UserInfoResponse userInfoResponse = redisGenericCacheService.getByPrefixById(id);
+            if(userInfoResponse != null){
+                return ApiResponse.<UserInfoResponse>builder()
+                        .result(userInfoResponse)
+                        .build();
+            }
 
-            //Get courses have registered by UserId
-            List<CourseRegisterView> courseRegisterView = courseRegisterViewRepository.findAllByUserId(id);
+            userInfoResponse  = userInfoHelper.buildUserInfoResponse(id);
 
-            userInfoResponse.setCourses(courseRegisterView.stream()
-                    .map(item -> modelMapper.map(item, CourseHeaderViewResponse.class)).toList());
+            redisGenericCacheService.saveItem(id, userInfoResponse, Duration.ofDays(1)); // Cache one day
 
             return ApiResponse.<UserInfoResponse>builder()
                     .result(userInfoResponse)
@@ -110,6 +111,12 @@ public class IUserInfoService implements UserInfoService {
                 .build();
         log.info("userCourse: {}", userCourse);
 
+        log.info("Update cache user-info");
+        kafkaTemplate.send(AppConstant.Topic.USER_CACHE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                        .userId(req.getUserId())
+                        .action(AppConstant.ACTION.REBUILD)
+                .build());
+
         //Xử lý tiền paypal
         userCourseRepository.save(userCourse);
         return ApiResponse.<String>builder()
@@ -119,6 +126,7 @@ public class IUserInfoService implements UserInfoService {
     }
 
     @Override
+    @Transactional
     public ApiResponse<String> learnLesson(UserLessonRequest req) {
         Object principal = SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         if (principal instanceof UserDetailCustom userDetails) {
@@ -127,31 +135,43 @@ public class IUserInfoService implements UserInfoService {
             Lesson lesson = lessonRepository.findById(req.getLessonId())
                     .orElseThrow(() -> new AppException(ErrorCode.LESSON_NOT_EXIST));
 
-            UserLesson userLesson = UserLesson.builder()
-                    .userId(userId)
-                    .lessonId(req.getLessonId())
-                    .status(AppConstant.COMPLETE)
-                    .build();
-            userLessonRepository.save(userLesson);
-
             Course course = courseRepository.findById(lesson.getCourseId())
                     .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
 
-            UserCourse userCourse = userCourseRepository.findByCourseIdAndUserId(lesson.getCourseId(), userId);
+            UserLesson userLesson = userLessonRepository.findByLessonIdAndUserId(req.getLessonId(), userId);
 
-            Integer countLessonLearning = lessonRepository.countAllByCourseId(lesson.getCourseId()).intValue();
-
-            userCourse.setProgression(
-                    BigDecimal.valueOf(countLessonLearning)
-                    .divide(course.getQuantity(), 2, BigDecimal.ROUND_HALF_UP)
-                    .multiply(BigDecimal.valueOf(100))
-            );
-
-            if(course.getQuantity().compareTo(BigDecimal.valueOf(countLessonLearning)) == 0){
-                userCourse.setStatus(AppConstant.COMPLETE);
+            if(userLesson == null) {
+                userLesson = UserLesson.builder()
+                        .userId(userId)
+                        .lessonId(req.getLessonId())
+                        .courseId(course.getId())
+                        .status(AppConstant.COMPLETE)
+                        .build();
+                userLessonRepository.save(userLesson);
             }
 
-            userCourseRepository.save(userCourse);
+            UserCourse userCourse = userCourseRepository.findByCourseIdAndUserId(lesson.getCourseId(), userId);
+
+            if(userCourse != null) {
+                Integer countLessonLearning = lessonRepository.countAllByCourseId(lesson.getCourseId()).intValue();
+
+                userCourse.setProgression(
+                        BigDecimal.valueOf(countLessonLearning)
+                                .divide(course.getQuantity(), 2, BigDecimal.ROUND_HALF_UP)
+                                .multiply(BigDecimal.valueOf(100))
+                );
+
+                if (course.getQuantity().compareTo(BigDecimal.valueOf(countLessonLearning)) == 0) {
+                    userCourse.setStatus(AppConstant.COMPLETE);
+                }
+
+                userCourseRepository.save(userCourse);
+            }else{
+                throw new AppException(ErrorCode.USER_NOT_REGISTER);
+            }
+
+            return ApiResponse.<String>builder()
+                    .build();
         }
 
         throw new AppException(ErrorCode.UNAUTHENTICATED);
@@ -182,6 +202,13 @@ public class IUserInfoService implements UserInfoService {
             modelMapper.map(req, userInfo);
 
             userInfo = userInfoRepository.save(userInfo);
+
+            log.info("Update cache user-info");
+            kafkaTemplate.send(AppConstant.Topic.USER_CACHE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                    .userId(req.getId())
+                    .action(AppConstant.ACTION.REBUILD)
+                    .build());
+
             return ApiResponse.<UserInfoResponse>builder()
                     .result(modelMapper.map(userInfo, UserInfoResponse.class))
                     .build();
@@ -200,6 +227,13 @@ public class IUserInfoService implements UserInfoService {
            // modelMapper.map(req, userInfo);
 
             userInfo = userInfoRepository.save(userInfo);
+
+            //Update Cache
+            log.info("Update cache user-info");
+            kafkaTemplate.send(AppConstant.Topic.USER_CACHE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                    .userId(req.getId())
+                    .action(AppConstant.ACTION.REBUILD)
+                    .build());
 
             if(auditLogs != null) {
                 AuditLogRequest auditLogRequest = AuditLogRequest.builder()

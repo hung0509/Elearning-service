@@ -20,4 +20,5 @@ public class LessonResponse {
     String description;
     BigDecimal lessonTime;
     String isActive;
+    String status;
 }

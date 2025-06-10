@@ -18,6 +18,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import software.amazon.awssdk.core.sync.RequestBody;
@@ -27,8 +28,10 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.controller.CategoryController;
+import vn.xuanhung.ELearning_Service.dto.request.ArticleCacheUpdateEvent;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
+import vn.xuanhung.ELearning_Service.dto.request.UserInfoCacheUpdateEvent;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.entity.Article;
@@ -61,7 +64,7 @@ public class IArticleService implements ArticleService {
     RedisCacheFactory redisCacheFactory;
 
     S3Client s3Client;
-    private final CategoryController categoryController;
+    KafkaTemplate<String, Object> kafkaTemplate;
 
     @NonFinal
     @Value("${aws.bucket}")
@@ -71,8 +74,6 @@ public class IArticleService implements ArticleService {
     @Value("${aws.folder}")
     String AWS_FOLDER;
 
-    @NonFinal
-    String PREFIX_ARTICLE = "article:user";
 
     @Override
     public ApiResponsePagination<List<ArticleResponse>> findAll(ArticleRequest request) {
@@ -99,10 +100,10 @@ public class IArticleService implements ArticleService {
     @Override
     public ApiResponsePagination<List<ArticleUserViewResponse>> getArticleUserView(ArticleUserViewRequest req) {
         log.info("***Log article service - get all article by pagination***");
+        RedisGenericCacheService<ArticleUserView> redisGenericCacheService = redisCacheFactory
+                .create(AppConstant.PREFIX.ARTICLE, ArticleUserView.class);
         if(req.getId() != null){
-            RedisGenericCacheService<ArticleUserView> redisGenericCacheService = redisCacheFactory
-                    .create(PREFIX_ARTICLE, ArticleUserView.class);
-            redisGenericCacheService.setDbLoaderById(id -> articleUserViewRepository.findById(req.getId()).orElse(null));
+            redisGenericCacheService.setDbLoaderById(id -> articleUserViewRepository.findById(id).orElse(null));
 
             ArticleUserView article = redisGenericCacheService.getById(req.getId(), Duration.ofMinutes(5)).get();
             List<ArticleUserViewResponse> data = new ArrayList<>();
@@ -120,6 +121,7 @@ public class IArticleService implements ArticleService {
         Page<ArticleUserView> page = articleUserViewRepository.findAll(spec, pageable);
 
         List<ArticleUserView> data = page.getContent();
+
         return ApiResponsePagination.<List<ArticleUserViewResponse>>builder()
                 .result(data.stream().map(item -> modelMapper.map(item , ArticleUserViewResponse.class)).toList())
                 .totalPages(page.getTotalPages())
@@ -138,6 +140,14 @@ public class IArticleService implements ArticleService {
         modelMapper.map(req, article);
 
         article = articleRepository.save(article);
+
+        log.info("Update cache article");
+        kafkaTemplate.send(AppConstant.Topic.ARTICLE_UPDATE_EVENT, ArticleCacheUpdateEvent.builder()
+                .articleId(req.getId())
+                .action(AppConstant.ACTION.REBUILD)
+                .build());
+
+
         return ApiResponse.<ArticleResponse>builder()
                 .result(modelMapper.map(article , ArticleResponse.class))
                 .build();
@@ -163,6 +173,12 @@ public class IArticleService implements ArticleService {
                 article.setContent(handleContentAndUploadImage(req.getContent()));
 
                 article = articleRepository.save(article);
+
+                log.info("Update cache user-info");
+                kafkaTemplate.send(AppConstant.Topic.USER_CACHE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                        .userId(article.getInstructorId())
+                        .action(AppConstant.ACTION.REBUILD)
+                        .build());
 
                 return ApiResponse.<ArticleResponse>builder()
                         .result(modelMapper.map(article, ArticleResponse.class))

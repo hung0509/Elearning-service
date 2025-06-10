@@ -28,6 +28,9 @@ public class CourseDetailViewResponse {
     String level;
     Date createdAt;
     Boolean isRegister;
+    Integer completedLesson;
+    Integer totalLesson;
+    BigDecimal completionPercentage;
     CertificateResponse certificate;
     DiscountResponse discount;
     CategoryResponse category;

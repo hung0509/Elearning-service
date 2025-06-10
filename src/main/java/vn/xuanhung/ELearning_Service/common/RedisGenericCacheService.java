@@ -84,6 +84,7 @@ public class RedisGenericCacheService<T> {
             if (cachedJson == null || cachedJson.isEmpty()) {
                 return List.of();
             }
+            log.info("Catching!!!");
 
             JavaType type = objectMapper.getTypeFactory().constructCollectionType(List.class, clazz);
             return objectMapper.readValue(cachedJson, type);
@@ -92,6 +93,42 @@ public class RedisGenericCacheService<T> {
             log.error("Error in prefix: {}", prefix, e);
         }
         return List.of();
+    }
+
+    public T getByPrefixById(Integer id){
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(prefix + ":" + id);
+            log.info("Key: {}", prefix + ":" + id);
+            if (cachedJson == null || cachedJson.isEmpty()) {
+                return null;
+            }
+            log.info("Catching!!!");
+
+            JavaType type = objectMapper.getTypeFactory().constructType(clazz);
+            return objectMapper.readValue(cachedJson, type);
+
+        } catch (Exception e) {
+            log.error("Error in prefix: {}", prefix, e);
+        }
+        return null;
+    }
+
+    public T getByKey(){
+        try {
+            String cachedJson = redisTemplate.opsForValue().get(prefix);
+            log.info("Key: {}", prefix);
+            if (cachedJson == null || cachedJson.isEmpty()) {
+                return null;
+            }
+            log.info("Catching!!!");
+
+            JavaType type = objectMapper.getTypeFactory().constructType(clazz);
+            return objectMapper.readValue(cachedJson, type);
+
+        } catch (Exception e) {
+            log.error("Error in prefix: {}", prefix, e);
+        }
+        return null;
     }
 
 
@@ -111,6 +148,20 @@ public class RedisGenericCacheService<T> {
             log.error("Failed to serialize item with id {}", id, e);
         } catch (Exception e) {
             log.error("Error saving item with id {}", id, e);
+        }
+    }
+
+    public void saveItem(T item, Duration baseTTL) {
+        try {
+            String json = objectMapper.writeValueAsString(item);
+            Duration ttl = randomizeTTL(baseTTL, 0.1);
+            redisTemplate.opsForValue().set(prefix, json, ttl);
+            log.info("Saved item to cache with key {}, TTL {}", prefix, ttl);
+            log.info("json {}", json);
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize item with id ", e);
+        } catch (Exception e) {
+            log.error("Error saving item with id ", e);
         }
     }
 
@@ -152,7 +203,7 @@ public class RedisGenericCacheService<T> {
         return List.of();
     }
 
-    public void invalidateById(String id) {
+    public void invalidateById(Integer id) {
         if (id == null) {
             log.warn("invalidateById called with null id");
             return;

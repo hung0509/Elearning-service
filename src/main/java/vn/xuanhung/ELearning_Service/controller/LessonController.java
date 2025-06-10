@@ -10,6 +10,7 @@ import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.dto.request.DiscountRequest;
 import vn.xuanhung.ELearning_Service.dto.request.LessonRequest;
+import vn.xuanhung.ELearning_Service.dto.request.LessonUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.response.DiscountResponse;
 import vn.xuanhung.ELearning_Service.dto.response.LessonResponse;
 import vn.xuanhung.ELearning_Service.service.LessonService;
@@ -44,7 +45,7 @@ public class LessonController {
 
 
     @PutMapping("/{id}")
-    public ApiResponse<Void> udpate(@RequestBody LessonRequest request, @PathVariable Integer id) {
+    public ApiResponse<LessonResponse> udpate(@RequestBody LessonUpdateRequest request, @PathVariable Integer id) {
         log.info("*Log controller lesson - edit lesson*");
         return lessonService.update(request, id);
     }

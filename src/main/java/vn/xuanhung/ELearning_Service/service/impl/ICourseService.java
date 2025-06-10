@@ -22,6 +22,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
@@ -34,10 +35,7 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
-import vn.xuanhung.ELearning_Service.dto.request.CourseDetailViewRequest;
-import vn.xuanhung.ELearning_Service.dto.request.CourseHeaderViewRequest;
-import vn.xuanhung.ELearning_Service.dto.request.CourseRequest;
-import vn.xuanhung.ELearning_Service.dto.request.KafkaUploadVideoDto;
+import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.*;
 import vn.xuanhung.ELearning_Service.entity.*;
 import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
@@ -91,6 +89,7 @@ public class ICourseService implements CourseService {
     KafkaTemplate<String, Object> kafkaTemplate;
 
     RedisCacheFactory redisCacheFactory;
+    RedisTemplate<String, String> redisTemplate;
     ObjectMapper objectMapper;
 
     @NonFinal
@@ -106,9 +105,6 @@ public class ICourseService implements CourseService {
         return null;
     }
 
-    @NonFinal
-    String PREFIX_CATEROGY = "course:header";
-
     @Override
     public ApiResponse<CourseResponse> findById(Integer integer) {
         return null;
@@ -117,20 +113,21 @@ public class ICourseService implements CourseService {
     @Override
     public ApiResponsePagination<List<CourseHeaderViewResponse>> getCourseHeader(CourseHeaderViewRequest req) {
         log.info("***Log course service - get header course ***");
-        if(req.getCourseId() != null){
-            RedisGenericCacheService<CourseHeaderView> redisGenericCacheService = redisCacheFactory
-                    .create(PREFIX_CATEROGY, CourseHeaderView.class);
-
-            redisGenericCacheService.setDbLoaderById(id -> courseHeaderViewRepository.findById(req.getCourseId()).orElse(null));
-            Optional<CourseHeaderView> courseHeaderView = redisGenericCacheService.getById(req.getCourseId(), Duration.ofMinutes(30));
-            log.info("data");
-            List<CourseHeaderViewResponse> data = new ArrayList<>();
-            data.add(modelMapper.map(courseHeaderView , CourseHeaderViewResponse.class));
-
-            return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
-                    .result(data)
-                    .build();
-        }
+//        if(req.getCourseId() != null){
+//            RedisGenericCacheService<CourseHeaderView> redisGenericCacheService = redisCacheFactory
+//                    .create(PREFIX_CATEROGY, CourseHeaderView.class);
+//
+//            redisGenericCacheService.setDbLoaderById(id -> courseHeaderViewRepository.findById(req.getCourseId()).orElse(null));
+//            Optional<CourseHeaderView> courseHeaderView = redisGenericCacheService.getById(req.getCourseId(), Duration.ofMinutes(30));
+//            log.info("data");
+//            List<CourseHeaderViewResponse> data = new ArrayList<>();
+//            CourseHeaderViewResponse course =  modelMapper.map(courseHeaderView.get() , CourseHeaderViewResponse.class);
+//            data.add(course);
+//
+//            return ApiResponsePagination.<List<CourseHeaderViewResponse>>builder()
+//                    .result(data)
+//                    .build();
+//        }
 
 //        List<Optional<CourseHeaderView>> courseHeaderViews = redisGenericCacheService
 //                .getByPrefix("course:header:page"+req.getPage());
@@ -161,6 +158,23 @@ public class ICourseService implements CourseService {
 
     public ApiResponsePagination<List<CourseDetailViewResponse>> getCourseHeader2(CourseHeaderViewRequest req) {
         log.info("***Log course service - get header course ***");
+
+//        RedisGenericCacheService<CourseDetailViewResponse> redisGenericCacheService = redisCacheFactory
+//                .create(AppConstant.PREFIX.COURSE_DETAIL , CourseDetailViewResponse.class);
+
+//        CourseDetailViewResponse userInfoResponse = redisGenericCacheService.getByPrefixById(req.getCourseId());
+
+//        if(userInfoResponse != null){
+//            list.add(userInfoResponse);
+//            return ApiResponsePagination.<List<CourseDetailViewResponse>>builder()
+//                    .result(list)
+//                    .pageSize(req.getPageSize())
+//                    .totalPages(0)
+//                    .currentPage(0)
+//                    .totalItems((long)0)
+//                    .build();
+//        }
+
         Pageable pageable = PageRequest.of(
                 req.getPage(),
                 req.getPageSize(),
@@ -171,9 +185,7 @@ public class ICourseService implements CourseService {
         Page<CourseHeaderView> page = courseHeaderViewRepository.findAll(spec, pageable);
         List<CourseHeaderView> coursesEntity = page.getContent();
         List<CourseHeaderViewResponse> courses = courseHeaderMapper.convertToDtoList(coursesEntity);
-
         List<CourseDetailViewResponse> list = new ArrayList<>();
-
         for(CourseHeaderViewResponse course: courses){
             //Danh sach bai hojc
             List<Lesson> lessons = lessonRepository.findAllByCourseIdAndIsActive(course.getId(), "Y");
@@ -211,7 +223,9 @@ public class ICourseService implements CourseService {
                     .build();
             list.add(courseDetailViewResponse);
         }
-
+//        if(req.getCourseId() != null) {
+//            redisGenericCacheService.saveItem(req.getCourseId(), list.get(0), Duration.ofMinutes(30)); // Cache one day
+//        }
         return ApiResponsePagination.<List<CourseDetailViewResponse>>builder()
                 .result(list)
                 .pageSize(req.getPageSize())
@@ -224,15 +238,45 @@ public class ICourseService implements CourseService {
     @Override
     public ApiResponse<CourseDetailViewResponse> getCourseDetail(CourseDetailViewRequest req) {
         log.info("***Log course service - get detail course ***");
+        String prefix = AppConstant.PREFIX.COURSE_DETAIL + ":" + req.getUserId() +":" + req.getCourseId();
         if(req.getCourseId() != null){
+            RedisGenericCacheService<CourseDetailViewResponse> redisGenericCacheService = redisCacheFactory
+                .create(AppConstant.PREFIX.COURSE_DETAIL , CourseDetailViewResponse.class);
+
+            redisGenericCacheService.setPrefix(prefix);
+
+            CourseDetailViewResponse courseDetailViewResponse = redisGenericCacheService.getByKey();
+            if(courseDetailViewResponse!= null){
+                return ApiResponse.<CourseDetailViewResponse>builder()
+                        .result(courseDetailViewResponse)
+                        .build();
+            }
+
             Course course = courseRepository.findById(req.getCourseId())
                     .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
 
-            //Danh sach bai hojc
+            //Danh sach bai hoc
             List<Lesson> lessons = lessonRepository.findAllByCourseIdAndIsActive(req.getCourseId(), "Y");
 
-            List<LessonResponse> lessonResponses = lessons.stream()
-                    .map((item) -> modelMapper.map(item, LessonResponse.class)).toList();
+            StringBuilder sql = new StringBuilder("SELECT lesson_id, status FROM d_user_lesson" +
+                    " WHERE user_id = ? and course_id = ?");
+
+            List<Map<String, Object>> list = jdbcTemplate.queryForList(sql.toString(), req.getUserId(), req.getCourseId());
+
+            Map<Integer, String> lessonStatusMap = new HashMap<>();
+            for (Map<String, Object> row : list) {
+                Integer lessonId = ((Number) row.get("lesson_id")).intValue(); // để an toàn
+                String status = (String) row.get("status");
+                lessonStatusMap.put(lessonId, status);
+            }
+
+            List<LessonResponse> lessonResponses = new ArrayList<>();
+            for(Lesson lesson: lessons){
+                LessonResponse lessonResponse = modelMapper.map(lesson, LessonResponse.class);
+                lessonResponse.setStatus(lessonStatusMap.get(lesson.getId()) != null
+                        ? AppConstant.COMPLETE : AppConstant.INCOMPLETE);
+                lessonResponses.add(lessonResponse);
+            }
 
             //Danh sach bai kiem tra
             List<Quiz> quizzes = quizRepository.findAllByCourseIdAndIsActive(req.getCourseId(), "Y");
@@ -244,7 +288,10 @@ public class ICourseService implements CourseService {
             List<CourseDocumentResponse> documentResponses = documents.stream()
                     .map((item) -> modelMapper.map(item, CourseDocumentResponse.class)).toList();
 
-            CourseDetailViewResponse courseDetailViewResponse =  CourseDetailViewResponse.builder()
+            //
+            StringBuilder sql1 = new StringBuilder("SELECT * FROM dbo.fn_get_course_progress_detail(?, ?)");
+
+            courseDetailViewResponse =  CourseDetailViewResponse.builder()
                     .id(course.getId())
                     .courseName(course.getCourseName())
                     .description(course.getDescription())
@@ -261,8 +308,21 @@ public class ICourseService implements CourseService {
                     .documents(documentResponses)
                     .build();
 
+            List<Map<String, Object>> list1 = jdbcTemplate.queryForList(sql1.toString(), req.getUserId(), req.getCourseId());
+
+            for (Map<String, Object> row : list1) {
+                courseDetailViewResponse.setTotalLesson(((Number) row.get("total_lessons")).intValue()); // để an toàn
+                courseDetailViewResponse.setCompletedLesson(((Number) row.get("completed_lessons")).intValue());
+                courseDetailViewResponse.setCompletionPercentage(BigDecimal.valueOf(((Number) row.get("completion_percentage")).doubleValue()));
+            }
+
             Boolean check = userCourseRepository.existsByCourseIdAndUserId(req.getCourseId(), req.getUserId());
             courseDetailViewResponse.setIsRegister(check);
+
+            redisGenericCacheService.saveItem(courseDetailViewResponse, Duration.ofMinutes(45));
+
+            String setKey = AppConstant.PREFIX.COURSE_DETAIL + ":set:" + req.getCourseId(); // course:detail:set:12
+            redisTemplate.opsForSet().add(setKey, prefix);
 
             return ApiResponse.<CourseDetailViewResponse>builder()
                     .result(courseDetailViewResponse)
@@ -295,6 +355,57 @@ public class ICourseService implements CourseService {
             log.error("Error: {}", e.getMessage());
             throw new AppException(ErrorCode.SYSTEM_ERROR);
         }
+    }
+
+    @Override
+    @Transactional
+    public ApiResponse<CourseUpdateResponse> update(CourseUpdateRequest req) {
+        log.info("***Log course service - update course ***");
+        Course entitySave = courseRepository.findById(req.getId())
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+        modelMapper.map(req, entitySave);
+        Discount discount = discountRepository.findByDiscountCode(req.getDiscountCode());
+
+        if(discount != null){
+            log.info("Discount: {}", discount);
+            entitySave.setDiscountId(discount.getId());
+
+            BigDecimal priceAfterReduce = entitySave.getPriceEntered()
+                    .multiply(BigDecimal.ONE.subtract(discount.getDiscountRate().divide(BigDecimal.valueOf(100))));
+            entitySave.setPriceAfterReduce(priceAfterReduce);
+        }
+
+        if (req.getCertificateName() != null) {
+            if (entitySave.getCertificateId() != null) {
+                Certificate certificate = certificateRepository.findById(entitySave.getCertificateId())
+                        .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+                certificate.setCertificateName(req.getCertificateName());
+            } else {
+                Certificate certificate = Certificate.builder()
+                        .certificateName(req.getCertificateName())
+                        .certificateLevel(entitySave.getLevel())
+                        .validityPeriod(BigDecimal.valueOf(3))//3 month
+                        .build();
+                certificate = certificateRepository.save(certificate);
+                entitySave.setCertificateId(certificate.getId());
+            }
+        }
+        entitySave = courseRepository.save(entitySave);
+        CourseUpdateResponse response = modelMapper.map(entitySave, CourseUpdateResponse.class);
+
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                        .courseId(entitySave.getId())
+                        .action(AppConstant.ACTION.INVALIDATE)
+                .build());
+
+        response.setDiscountCode(req.getDiscountCode());
+        response.setCertificateName(req.getCertificateName());
+        return ApiResponse.<CourseUpdateResponse>builder()
+                .result(response)
+                .build();
     }
 
     @Override
@@ -335,6 +446,7 @@ public class ICourseService implements CourseService {
             }
 
             entitySave = modelMapper.map(req, Course.class);
+            entitySave.setQuantity(BigDecimal.valueOf(req.getLessons() != null ? req.getLessons().size() : 0));
 
             try {
                 entitySave.setAvatar(uploadImage(req.getAvatar()));
@@ -357,20 +469,22 @@ public class ICourseService implements CourseService {
 
         entitySave = courseRepository.saveAndFlush(entitySave);
 
-        if(req.getId() != null) {
+        if(req.getId() == null) { // case thêm khóa học
             String playlistId = createPlaylist(entitySave.getCourseName(), entitySave.getDescription());
-            String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
-            log.info("Send kafka upload video: {}", fileTemp);
-            kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
-                    KafkaUploadVideoDto.builder()
-                            .s3Url(fileTemp)
-//                        .video(req.getTrailer())
-                            .courseId(entitySave.getId())
-                            .playlistId(playlistId)
-                            .title(entitySave.getCourseName())
-                            .description(entitySave.getDescription())
-                            .build());
+            if(req.getTrailer() != null) {
+                String fileTemp = uploadTempFile(req.getTrailer()); // upload tạm lên S3
+                log.info("Send kafka upload video: {}", fileTemp);
 
+                kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                        KafkaUploadVideoDto.builder()
+                                .s3Url(fileTemp)
+//                        .video(req.getTrailer())
+                                .courseId(entitySave.getId())
+                                .playlistId(playlistId)
+                                .title(entitySave.getCourseName())
+                                .description(entitySave.getDescription())
+                                .build());
+            }
             if(req.getLessons() != null && !req.getLessons().isEmpty()){
                 Integer id = entitySave.getId();
                 req.getLessons().forEach((lesson) -> {
@@ -385,17 +499,19 @@ public class ICourseService implements CourseService {
 
                         lesson1 = lessonRepository.saveAndFlush(lesson1);
 
-                        String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
-                        log.info("Send kafka upload video: {}", fileTempLesson);
-                        kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
-                                KafkaUploadVideoDto.builder()
-                                        .s3Url(fileTempLesson)
+                        if(lesson.getUrlLesson() != null) {
+                            String fileTempLesson = uploadTempFile(lesson.getUrlLesson()); // upload tạm lên S3
+                            log.info("Send kafka upload video: {}", fileTempLesson);
+                            kafkaTemplate.send(AppConstant.Topic.VIDEO_TOPIC,
+                                    KafkaUploadVideoDto.builder()
+                                            .s3Url(fileTempLesson)
 //                                    .video(lesson.getUrlLesson())
-                                        .lessonId(lesson1.getId())
-                                        .playlistId(playlistId)
-                                        .title(lesson1.getLessonName())
-                                        .description(lesson1.getDescription())
-                                        .build());
+                                            .lessonId(lesson1.getId())
+                                            .playlistId(playlistId)
+                                            .title(lesson1.getLessonName())
+                                            .description(lesson1.getDescription())
+                                            .build());
+                        }
                     }catch (Exception e){
                         log.error("Error: {}", e.getMessage());
                         throw new AppException(ErrorCode.SYSTEM_ERROR);
@@ -403,6 +519,13 @@ public class ICourseService implements CourseService {
                 });
             }
         }
+
+        //Xóa Cache
+        log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_SAVE_EVENT);
+        kafkaTemplate.send(AppConstant.Topic.COURSE_SAVE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(entitySave.getId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
 
         return ApiResponse.<CourseResponse>builder()
                 .result(modelMapper.map(entitySave, CourseResponse.class))
