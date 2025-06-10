@@ -1,6 +1,8 @@
 package vn.xuanhung.ELearning_Service.helper;
 
+import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
+import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
 import org.springframework.data.domain.Page;
@@ -34,6 +36,7 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class UserInfoHelper {
     UserInfoRepository userInfoRepository;
     ArticleUserViewRepository articleUserViewRepository;
