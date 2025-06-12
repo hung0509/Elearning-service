@@ -43,6 +43,7 @@ public abstract class AppConstant {
         public static final String USER_INFO = "user";
         public static final String ARTICLE = "article:user";
         public static final String COURSE_DETAIL = "course:detail";
+        public static final String QUIZ = "quiz";
      }
 
     public static final class ACTION{

@@ -28,13 +28,11 @@ import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.controller.CategoryController;
-import vn.xuanhung.ELearning_Service.dto.request.ArticleCacheUpdateEvent;
-import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
-import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
-import vn.xuanhung.ELearning_Service.dto.request.UserInfoCacheUpdateEvent;
+import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.entity.Article;
+import vn.xuanhung.ELearning_Service.entity.AuditLog;
 import vn.xuanhung.ELearning_Service.entity.Category;
 import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
@@ -137,7 +135,8 @@ public class IArticleService implements ArticleService {
         Article article = articleRepository.findById(req.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ARTICLE_NOT_EXIST));
 
-        modelMapper.map(req, article);
+        //modelMapper.map(req, article);
+        List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(req, article, modelMapper);
 
         article = articleRepository.save(article);
 
@@ -146,6 +145,14 @@ public class IArticleService implements ArticleService {
                 .articleId(req.getId())
                 .action(AppConstant.ACTION.REBUILD)
                 .build());
+
+        if(auditLogs != null) {
+            AuditLogRequest auditLogRequest = AuditLogRequest.builder()
+                    .auditLogs(auditLogs)
+                    .build();
+            log.info("Dto log: {}", auditLogs);
+            kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
+        }
 
 
         return ApiResponse.<ArticleResponse>builder()

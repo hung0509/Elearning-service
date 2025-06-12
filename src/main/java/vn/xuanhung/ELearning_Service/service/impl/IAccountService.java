@@ -14,10 +14,12 @@ import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
+import vn.xuanhung.ELearning_Service.common.ModelMapperUtil;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.AccountResponse;
 import vn.xuanhung.ELearning_Service.entity.Account;
+import vn.xuanhung.ELearning_Service.entity.AuditLog;
 import vn.xuanhung.ELearning_Service.entity.Role;
 import vn.xuanhung.ELearning_Service.entity.UserInfo;
 import vn.xuanhung.ELearning_Service.exception.AppException;
@@ -118,10 +120,19 @@ public class IAccountService implements AccountService {
     public ApiResponse<AccountResponse> update(UpdateAccountRequest request) {
         Account account = accountRepository.findByUserId(request.getUserId());
         if(account != null){
-            modelMapper.map(request, account);
+            //modelMapper.map(request, account);
+            List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(request, account,modelMapper);
             account.setPassword(passwordEncoder.encode(request.getPassword()));
 
             account = accountRepository.save(account);
+
+            if(auditLogs != null) {
+                AuditLogRequest auditLogRequest = AuditLogRequest.builder()
+                        .auditLogs(auditLogs)
+                        .build();
+                log.info("Dto log: {}", auditLogs);
+                kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
+            }
             return ApiResponse.<AccountResponse>builder()
                     .message("Update successfully!")
                     .result(modelMapper.map(account, AccountResponse.class))

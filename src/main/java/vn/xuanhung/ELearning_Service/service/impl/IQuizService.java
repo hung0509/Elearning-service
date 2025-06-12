@@ -10,10 +10,13 @@ import org.modelmapper.ModelMapper;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
+import vn.xuanhung.ELearning_Service.common.RedisCacheFactory;
+import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
 import vn.xuanhung.ELearning_Service.dto.response.*;
 import vn.xuanhung.ELearning_Service.entity.*;
+import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.repository.*;
@@ -21,6 +24,7 @@ import vn.xuanhung.ELearning_Service.service.QuizService;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -41,6 +45,7 @@ public class IQuizService implements QuizService {
 
     KafkaTemplate<String, Object> kafkaTemplate;
     ModelMapper modelMapper;
+    RedisCacheFactory redisCacheFactory;
 
     @Override
     @Transactional
@@ -139,6 +144,18 @@ public class IQuizService implements QuizService {
     @Override
     public ApiResponse<QuizDetailResponse> getById(Integer id) {
         log.info("***Log quiz service - get quiz ***");
+        RedisGenericCacheService<QuizDetailResponse> redisGenericCacheService = redisCacheFactory
+                .create(AppConstant.PREFIX.QUIZ, QuizDetailResponse.class);
+
+        redisGenericCacheService.setPrefix(AppConstant.PREFIX.QUIZ + ":" + id);
+
+        QuizDetailResponse response = redisGenericCacheService.getByKey();
+        if(response != null){
+            return ApiResponse.<QuizDetailResponse>builder()
+                    .result(response)
+                    .build();
+        }
+
         Quiz quiz = quizRepository.findById(id)
                 .orElseThrow(() -> new AppException(ErrorCode.QUIZ_NOT_EXIST));
 
@@ -167,13 +184,16 @@ public class IQuizService implements QuizService {
             questionResponses.add(questionResponse);
         }
 
-        QuizDetailResponse response = QuizDetailResponse.builder()
+        response = QuizDetailResponse.builder()
                 .id(quiz.getId())
                 .title(quiz.getTitle())
                 .description(quiz.getDescription())
                 .timeLimit(quiz.getTimeLimit())
                 .questions(questionResponses)
                 .build();
+
+        //Tao cache
+        redisGenericCacheService.saveItem(response, Duration.ofHours(2));
 
         return ApiResponse.<QuizDetailResponse>builder()
                 .result(response)

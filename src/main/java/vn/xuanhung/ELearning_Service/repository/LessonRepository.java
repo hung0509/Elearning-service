@@ -11,7 +11,7 @@ import java.util.List;
 public interface LessonRepository extends JpaRepository<Lesson, Integer>, JpaSpecificationExecutor<Lesson> {
     List<Lesson> findAllByCourseIdAndIsActive(int courseId, String isActive);
 
-    Number countAllByCourseId(int courseId);
+    Integer countAllByCourseId(int courseId);
 
 
  }

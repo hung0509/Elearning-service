@@ -41,6 +41,7 @@ import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,6 +62,7 @@ public class IUserInfoService implements UserInfoService {
     ArticleUserViewRepository articleUserViewRepository;
     CourseHeaderViewRepository courseHeaderViewRepository;
     UserInfoHelper userInfoHelper;
+    UserCertificateRepository userCertificateRepository;
 
     KafkaTemplate<String, Object> kafkaTemplate;
     JdbcTemplate jdbcTemplate;
@@ -153,16 +155,27 @@ public class IUserInfoService implements UserInfoService {
             UserCourse userCourse = userCourseRepository.findByCourseIdAndUserId(lesson.getCourseId(), userId);
 
             if(userCourse != null) {
-                Integer countLessonLearning = lessonRepository.countAllByCourseId(lesson.getCourseId()).intValue();
+                Integer totalLessons = lessonRepository.countAllByCourseId(course.getId());
 
-                userCourse.setProgression(
-                        BigDecimal.valueOf(countLessonLearning)
-                                .divide(course.getQuantity(), 2, BigDecimal.ROUND_HALF_UP)
-                                .multiply(BigDecimal.valueOf(100))
-                );
+                Integer completedLessons = userLessonRepository.countByCourseIdAndUserId(course.getId(), userId);
 
-                if (course.getQuantity().compareTo(BigDecimal.valueOf(countLessonLearning)) == 0) {
+                BigDecimal progression = BigDecimal.valueOf(completedLessons)
+                        .divide(BigDecimal.valueOf(totalLessons), 2, RoundingMode.HALF_UP)
+                        .multiply(BigDecimal.valueOf(100));
+
+                userCourse.setProgression(progression);
+
+                if(BigDecimal.valueOf(100).compareTo(progression) == 0 ){
                     userCourse.setStatus(AppConstant.COMPLETE);
+
+                    log.info("Created certificate for user");
+                    UserCertificate certificate = UserCertificate.builder()
+                            .certificateId(course.getCertificateId())
+                            .userId(userId)
+                            .obtainedDate(new Date())
+                            .status(AppConstant.COMPLETE)
+                            .build();
+                    userCertificateRepository.save(certificate);
                 }
 
                 userCourseRepository.save(userCourse);

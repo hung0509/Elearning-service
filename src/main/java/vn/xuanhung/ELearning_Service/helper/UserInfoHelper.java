@@ -19,11 +19,13 @@ import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CertificateResponse;
 import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
+import vn.xuanhung.ELearning_Service.entity.UserCertificate;
 import vn.xuanhung.ELearning_Service.entity.UserInfo;
 import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
 import vn.xuanhung.ELearning_Service.entity.view.CourseRegisterView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
+import vn.xuanhung.ELearning_Service.repository.UserCertificateRepository;
 import vn.xuanhung.ELearning_Service.repository.UserInfoRepository;
 import vn.xuanhung.ELearning_Service.repository.view.ArticleUserViewRepository;
 import vn.xuanhung.ELearning_Service.repository.view.CourseRegisterViewRepository;
@@ -41,6 +43,7 @@ public class UserInfoHelper {
     UserInfoRepository userInfoRepository;
     ArticleUserViewRepository articleUserViewRepository;
     CourseRegisterViewRepository courseRegisterViewRepository;
+    UserCertificateRepository userCertificateRepository;
 
     ModelMapper modelMapper;
     JdbcTemplate jdbcTemplate;
@@ -67,6 +70,11 @@ public class UserInfoHelper {
 
         userInfoResponse.setCourses(courseRegisterView.stream()
                 .map(item -> modelMapper.map(item, CourseHeaderViewResponse.class)).toList());
+
+        //Get certificate had achieved
+        List<UserCertificate> userCertificates = userCertificateRepository.findAllByUserId(id);
+        userInfoResponse.setCertificates(userCertificates.stream()
+                .map(item -> modelMapper.map(item, CertificateResponse.class)).toList());
 
         StringBuilder sql = new StringBuilder("select\n" +
                 "dce.*\n" +
