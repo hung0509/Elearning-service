@@ -50,4 +50,10 @@ public abstract class AppConstant {
         public static final String INVALIDATE = "Invalidate";
         public static final String REBUILD = "Rebuild";
     }
+
+    public static final class AUDIT_STATE{
+        public static final String CREATE = "CREATE";
+        public static final String DELETE = "DELETE";
+        public static final String EDIT = "EDIT";
+    }
 }

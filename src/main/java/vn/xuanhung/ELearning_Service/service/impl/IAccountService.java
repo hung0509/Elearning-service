@@ -120,19 +120,19 @@ public class IAccountService implements AccountService {
     public ApiResponse<AccountResponse> update(UpdateAccountRequest request) {
         Account account = accountRepository.findByUserId(request.getUserId());
         if(account != null){
-            //modelMapper.map(request, account);
-            List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(request, account,modelMapper);
+            modelMapper.map(request, account);
+            //List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(request, account,modelMapper);
             account.setPassword(passwordEncoder.encode(request.getPassword()));
 
             account = accountRepository.save(account);
 
-            if(auditLogs != null) {
-                AuditLogRequest auditLogRequest = AuditLogRequest.builder()
-                        .auditLogs(auditLogs)
-                        .build();
-                log.info("Dto log: {}", auditLogs);
-                kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
-            }
+//            if(auditLogs != null) {
+//                AuditLogRequest auditLogRequest = AuditLogRequest.builder()
+//                        .auditLogs(auditLogs)
+//                        .build();
+//                log.info("Dto log: {}", auditLogs);
+//                kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
+//            }
             return ApiResponse.<AccountResponse>builder()
                     .message("Update successfully!")
                     .result(modelMapper.map(account, AccountResponse.class))

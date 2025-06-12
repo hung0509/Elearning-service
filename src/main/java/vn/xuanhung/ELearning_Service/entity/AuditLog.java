@@ -33,4 +33,13 @@ public class AuditLog extends AbstractMappedEntity{
 
     @Column(name = "class_audit")
     String classAudit;
+
+    @Column(name = "user_id")
+    Integer userId;
+
+    @Column(name = "username")
+    String userName;
+
+    @Column(name = "action")
+    String action;
 }

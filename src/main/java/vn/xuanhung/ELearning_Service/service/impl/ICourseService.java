@@ -265,7 +265,7 @@ public class ICourseService implements CourseService {
 
             Map<Integer, String> lessonStatusMap = new HashMap<>();
             for (Map<String, Object> row : list) {
-                Integer lessonId = ((Number) row.get("lesson_id")).intValue(); // để an toàn
+                Integer lessonId = ((Number) row.get("lesson_id")).intValue();
                 String status = (String) row.get("status");
                 lessonStatusMap.put(lessonId, status);
             }

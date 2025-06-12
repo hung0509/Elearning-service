@@ -4,10 +4,12 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleRequest;
+import vn.xuanhung.ELearning_Service.dto.request.ArticleUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.request.ArticleUserViewRequest;
 import vn.xuanhung.ELearning_Service.dto.request.DiscountRequest;
 import vn.xuanhung.ELearning_Service.dto.response.ArticleResponse;
@@ -43,8 +45,8 @@ public class ArticleController {
         return articleService.getArticleUserView(req);
     }
 
-    @PutMapping()
-    public ApiResponse<ArticleResponse> update(@ModelAttribute ArticleRequest request) {
+    @PutMapping
+    public ApiResponse<ArticleResponse> update(@RequestBody ArticleUpdateRequest request) {
         log.info("*Log controller article - update article*");
         return articleService.updateArticle(request);
     }

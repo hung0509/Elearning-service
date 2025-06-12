@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 
 import java.util.Date;
 
@@ -15,6 +16,7 @@ import java.util.Date;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_article")
+@EntityListeners(AuditEntityListener.class)
 public class Article extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -14,6 +14,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
+import vn.xuanhung.ELearning_Service.audit.context.AuditorContext;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.jwt.JwtUtil;
 import vn.xuanhung.ELearning_Service.jwt.UserDetailCustom;
@@ -36,58 +37,63 @@ public class JwtFilter extends OncePerRequestFilter {
 
         AntPathMatcher pathMatcher = new AntPathMatcher();
 
-        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
-            response.setStatus(HttpServletResponse.SC_OK);
-            return;
-        }
-
-        //Các endpoint không cần ddi qua
-        if (request.getMethod().equalsIgnoreCase("GET")) {
-            for (String publicUrl : AppConstant.GET_URL_PUBLIC) {
-                if (pathMatcher.match("/elearning-service" + publicUrl, request.getRequestURI())) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-            }
-        }
-
-        if (request.getMethod().equalsIgnoreCase("POST")) {
-            for (String publicUrl : AppConstant.URL_PUBLIC) {
-                if (request.getRequestURI().equalsIgnoreCase("/elearning-service" + publicUrl)) {
-                    filterChain.doFilter(request, response);
-                    return;
-                }
-            }
-        }
-
-        log.info("***JWT filter service. JWT authentication provider***");
-        final var authorizationHeader = request.getHeader("Authorization");
-
-        String username = null;
-        String jwt = null;
-
-        if ( authorizationHeader != null && authorizationHeader.startsWith("Bearer ") ) {
-            jwt = authorizationHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-            } catch (ExpiredJwtException e) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has expired");
+        try {
+            if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+                response.setStatus(HttpServletResponse.SC_OK);
                 return;
             }
-        }
 
-        if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-            UserDetailCustom userDetails = (UserDetailCustom) this.userDetailsService.loadUserByUsername(username);
-
-            if (this.jwtUtil.validateToken(jwt, userDetails)) {
-                final UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
-                        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-                usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-                SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+            //Các endpoint không cần ddi qua
+            if (request.getMethod().equalsIgnoreCase("GET")) {
+                for (String publicUrl : AppConstant.GET_URL_PUBLIC) {
+                    if (pathMatcher.match("/elearning-service" + publicUrl, request.getRequestURI())) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                }
             }
+
+            if (request.getMethod().equalsIgnoreCase("POST")) {
+                for (String publicUrl : AppConstant.URL_PUBLIC) {
+                    if (request.getRequestURI().equalsIgnoreCase("/elearning-service" + publicUrl)) {
+                        filterChain.doFilter(request, response);
+                        return;
+                    }
+                }
+            }
+
+            log.info("***JWT filter service. JWT authentication provider***");
+            final var authorizationHeader = request.getHeader("Authorization");
+
+            String username = null;
+            String jwt = null;
+
+            if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+                jwt = authorizationHeader.substring(7);
+                try {
+                    username = jwtUtil.extractUsername(jwt);
+                    AuditorContext.setCurrentUser(username);//Xet username moi thread local moi khi 1 request toi
+                } catch (ExpiredJwtException e) {
+                    response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Token has expired");
+                    return;
+                }
+            }
+
+            if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+
+                UserDetailCustom userDetails = (UserDetailCustom) this.userDetailsService.loadUserByUsername(username);
+
+                if (this.jwtUtil.validateToken(jwt, userDetails)) {
+                    final UsernamePasswordAuthenticationToken usernamePasswordAuthenticationToken =
+                            new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+                    usernamePasswordAuthenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+                    SecurityContextHolder.getContext().setAuthentication(usernamePasswordAuthenticationToken);
+                }
+            }
+            filterChain.doFilter(request, response);
+        }finally {
+            AuditorContext.clear(); //Dọn sạch ThreadLocal để tránh memory leak
         }
-        filterChain.doFilter(request, response);
     }
 
 

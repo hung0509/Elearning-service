@@ -130,13 +130,14 @@ public class IArticleService implements ArticleService {
     }
 
     @Override
-    public ApiResponse<ArticleResponse> updateArticle(ArticleRequest req) {
+    public ApiResponse<ArticleResponse> updateArticle(ArticleUpdateRequest req) {
+
         log.info("***Log article service - update article***");
         Article article = articleRepository.findById(req.getId())
                 .orElseThrow(() -> new AppException(ErrorCode.ARTICLE_NOT_EXIST));
 
-        //modelMapper.map(req, article);
-        List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(req, article, modelMapper);
+        modelMapper.map(req, article);
+//        List<AuditLog> auditLogs =  ModelMapperUtil.mapWithLog(req, article, modelMapper);
 
         article = articleRepository.save(article);
 
@@ -146,13 +147,13 @@ public class IArticleService implements ArticleService {
                 .action(AppConstant.ACTION.REBUILD)
                 .build());
 
-        if(auditLogs != null) {
-            AuditLogRequest auditLogRequest = AuditLogRequest.builder()
-                    .auditLogs(auditLogs)
-                    .build();
-            log.info("Dto log: {}", auditLogs);
-            kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
-        }
+//        if(auditLogs != null) {
+//            AuditLogRequest auditLogRequest = AuditLogRequest.builder()
+//                    .auditLogs(auditLogs)
+//                    .build();
+//            log.info("Dto log: {}", auditLogs);
+//            kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
+//        }
 
 
         return ApiResponse.<ArticleResponse>builder()
