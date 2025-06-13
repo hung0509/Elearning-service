@@ -1,9 +1,6 @@
 package vn.xuanhung.ELearning_Service.audit.listener;
 
-import jakarta.persistence.PostUpdate;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.PreRemove;
-import jakarta.persistence.PreUpdate;
+import jakarta.persistence.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import vn.xuanhung.ELearning_Service.audit.config.SpringContext;
@@ -36,9 +33,14 @@ public class AuditEntityListener {
         saveLogs(logs);
     }
 
-    @PreUpdate
-    public void preUpdate(Object entity) {
-        oldStateHolder.set(AuditLogUtil.deepCopy(entity)); // Optional deep copy
+//    @PreUpdate
+//    public void preUpdate(Object entity) {
+//        oldStateHolder.set(AuditLogUtil.deepCopy(entity)); // Optional deep copy
+//    }
+    @PostLoad
+    public void postLoad(Object entity) {
+        // Lưu bản gốc ngay sau khi entity được load từ DB
+        oldStateHolder.set(AuditLogUtil.deepCopy(entity));
     }
 
     @PostUpdate

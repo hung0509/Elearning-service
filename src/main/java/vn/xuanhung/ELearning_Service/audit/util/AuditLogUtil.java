@@ -1,8 +1,12 @@
 package vn.xuanhung.ELearning_Service.audit.util;
 
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.PropertyAccessor;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
 import vn.xuanhung.ELearning_Service.audit.annotation.NoAudit;
+import vn.xuanhung.ELearning_Service.audit.context.AuditorContext;
 import vn.xuanhung.ELearning_Service.entity.AuditLog;
 
 import java.lang.reflect.Field;
@@ -11,6 +15,9 @@ import java.util.*;
 
 @Slf4j
 public class AuditLogUtil {
+    private static final ObjectMapper objectMapper = new ObjectMapper()
+            .disable(SerializationFeature.FAIL_ON_EMPTY_BEANS)
+            .setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 
     public static List<AuditLog> logCreate(Object entity, Set<String> excluded) {
         return buildLogs(null, entity, excluded, "CREATE");
@@ -43,6 +50,7 @@ public class AuditLogUtil {
                 if (!Objects.equals(oldVal, newVal)) {
                     log.info("Field changed: {}, from '{}' to '{}'", fieldName, oldVal, newVal);
                     logs.add(AuditLog.builder()
+                            .userName(AuditorContext.getCurrentUser())
                             .fieldChange(fieldName)
                             .valueOld(oldVal != null ? oldVal.toString() : null)
                             .valueNew(newVal != null ? newVal.toString() : null)
@@ -64,9 +72,9 @@ public class AuditLogUtil {
                 || (excluded != null && excluded.contains(field.getName()));
     }
 
-    public static <T> T deepCopy(Object source) {
+    @SuppressWarnings("unchecked")
+    public static <T> T deepCopy(T source) {
         try {
-            ObjectMapper objectMapper = new ObjectMapper();
             String json = objectMapper.writeValueAsString(source);
             return (T) objectMapper.readValue(json, source.getClass());
         } catch (Exception e) {
