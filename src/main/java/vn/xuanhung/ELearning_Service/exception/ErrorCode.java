@@ -38,7 +38,8 @@ public enum ErrorCode {
     ANSWER_EMPTY(12378, "Không tìm thấy câu trả lời nào!", HttpStatus.BAD_REQUEST),
     INVALID_ANSWER_COUNT(12400, "Have one correct answer", HttpStatus.BAD_REQUEST),
     ACCOUNT_NOT_ACTIVE(12222, "Tài khoản chưa được kích hoạt!", HttpStatus.OK),
-    USER_NOT_REGISTER(12225, "Người dùng chưa đăng ký khóa học này", HttpStatus.BAD_REQUEST)
+    USER_NOT_REGISTER(12225, "Người dùng chưa đăng ký khóa học này", HttpStatus.BAD_REQUEST),
+    PAYMENT_METHOD_NOT_EXIST(1029, "Thanh toán thất bại!", HttpStatus.BAD_REQUEST)
     ;
 
     int code;

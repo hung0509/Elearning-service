@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 
 import java.util.Set;
 
@@ -17,6 +18,7 @@ import java.util.Set;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_role")
+@EntityListeners(AuditEntityListener.class)
 public class Role {
     @Id
     @Column(name = "role_name", length = 20, nullable = false)

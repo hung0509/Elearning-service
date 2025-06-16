@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 
 @Entity
 @Slf4j
@@ -15,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_answer")
 @Builder
+@EntityListeners(AuditEntityListener.class)
 public class Answer extends AbstractMappedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

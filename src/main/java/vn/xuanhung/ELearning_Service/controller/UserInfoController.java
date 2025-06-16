@@ -4,12 +4,14 @@ import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import vn.xuanhung.ELearning_Service.common.ApiResponse;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.BaseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserCourseRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserInfoRequest;
+import vn.xuanhung.ELearning_Service.dto.request.UserInfoUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.request.UserLessonRequest;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.service.UserInfoService;
@@ -36,6 +38,12 @@ public class UserInfoController {
         return userInfoService.getMyInfo();
     }
 
+    @GetMapping("/special")
+    public ApiResponse<List<UserInfoResponse>> getSpecialUsers() {
+        log.info("Log user controller - get my-special-users");
+        return userInfoService.getUserSpecial();
+    }
+
     @PostMapping("/register/course")
     public ApiResponse<String> registerCourse(@RequestBody UserCourseRequest req) {
         log.info("Log user controller - register course");
@@ -54,8 +62,8 @@ public class UserInfoController {
         return userInfoService.update(req);
     }
 
-    @PostMapping("/update/v2")
-    public ApiResponse<UserInfoResponse> registerCourse2(@RequestBody UserInfoRequest req) {
+    @PostMapping(path = "/update/v2", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<UserInfoResponse> registerCourse2(@ModelAttribute UserInfoUpdateRequest req) {
         log.info("Log user controller - update user info");
         return userInfoService.update2(req);
     }

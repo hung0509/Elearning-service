@@ -8,6 +8,7 @@ import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
 import org.joda.time.LocalDateTime;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 
 import java.util.Date;
 
@@ -19,6 +20,7 @@ import java.util.Date;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_account")
+@EntityListeners(AuditEntityListener.class)
 public class Account extends AbstractMappedEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

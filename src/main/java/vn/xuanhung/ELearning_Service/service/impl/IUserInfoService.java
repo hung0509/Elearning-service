@@ -1,33 +1,32 @@
 package vn.xuanhung.ELearning_Service.service.impl;
 
+import com.amazonaws.services.s3.model.ObjectMetadata;
 import jakarta.transaction.Transactional;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
+import lombok.experimental.NonFinal;
 import lombok.extern.slf4j.Slf4j;
 import org.modelmapper.ModelMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectResponse;
 import vn.xuanhung.ELearning_Service.common.*;
 import vn.xuanhung.ELearning_Service.constant.AppConstant;
 import vn.xuanhung.ELearning_Service.dto.request.*;
-import vn.xuanhung.ELearning_Service.dto.response.ArticleUserViewResponse;
-import vn.xuanhung.ELearning_Service.dto.response.CertificateResponse;
-import vn.xuanhung.ELearning_Service.dto.response.CourseHeaderViewResponse;
 import vn.xuanhung.ELearning_Service.dto.response.UserInfoResponse;
 import vn.xuanhung.ELearning_Service.entity.*;
-import vn.xuanhung.ELearning_Service.entity.view.ArticleUserView;
-import vn.xuanhung.ELearning_Service.entity.view.CourseHeaderView;
-import vn.xuanhung.ELearning_Service.entity.view.CourseRegisterView;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
 import vn.xuanhung.ELearning_Service.helper.UserInfoHelper;
@@ -37,9 +36,9 @@ import vn.xuanhung.ELearning_Service.repository.view.ArticleUserViewRepository;
 import vn.xuanhung.ELearning_Service.repository.view.CourseHeaderViewRepository;
 import vn.xuanhung.ELearning_Service.repository.view.CourseRegisterViewRepository;
 import vn.xuanhung.ELearning_Service.service.UserInfoService;
-import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
-import vn.xuanhung.ELearning_Service.specification.CourseHeaderSpecification;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
@@ -68,6 +67,15 @@ public class IUserInfoService implements UserInfoService {
     JdbcTemplate jdbcTemplate;
     ModelMapper modelMapper;
     RedisCacheFactory redisCacheFactory;
+    S3Client s3Client;
+
+    @NonFinal
+    @Value("${aws.bucket}")
+    String AWS_BUCKET;
+
+    @NonFinal
+    @Value("${aws.folder}")
+    String AWS_FOLDER;
 
 
     @Override
@@ -119,6 +127,12 @@ public class IUserInfoService implements UserInfoService {
                         .action(AppConstant.ACTION.REBUILD)
                 .build());
 
+        //Câp nhật lại trạng thái khóa học! xóa c
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                .userId(req.getUserId())
+                .action(AppConstant.ACTION.INVALIDATE)
+                .build());
+
         //Xử lý tiền paypal
         userCourseRepository.save(userCourse);
         return ApiResponse.<String>builder()
@@ -150,6 +164,12 @@ public class IUserInfoService implements UserInfoService {
                         .status(AppConstant.COMPLETE)
                         .build();
                 userLessonRepository.save(userLesson);
+
+                log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
+                kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                        .courseId(lesson.getCourseId())
+                        .action(AppConstant.ACTION.INVALIDATE)
+                        .build());
             }
 
             UserCourse userCourse = userCourseRepository.findByCourseIdAndUserId(lesson.getCourseId(), userId);
@@ -214,6 +234,32 @@ public class IUserInfoService implements UserInfoService {
     }
 
     @Override
+    public ApiResponse<List<UserInfoResponse>> getUserSpecial() {
+        log.info("***Log course service - get user special***");
+        StringBuilder sql = new StringBuilder("select user_info_id, first_name, last_name, avatar from d_user_special_view ");
+
+        List<Map<String, Object>> result = jdbcTemplate.queryForList(sql.toString());
+        List<UserInfoResponse> data = new ArrayList<>();
+        try{
+            for(Map<String, Object> rs : result){
+                UserInfoResponse user = UserInfoResponse.builder()
+                        .id(ParseHelper.INT.parse(rs.get("user_info_id")))
+                        .firstName(ParseHelper.STRING.parse(rs.get("first_name")))
+                        .lastName(ParseHelper.STRING.parse(rs.get("last_name")))
+                        .avatar(ParseHelper.STRING.parse(rs.get("avatar")))
+                        .build();
+                data.add(user);
+            }
+            return ApiResponse.<List<UserInfoResponse>>builder()
+                    .result(data)
+                    .build();
+        }catch (Exception e){
+            log.error("Error: {}", e.getMessage());
+            throw new AppException(ErrorCode.SYSTEM_ERROR);
+        }
+    }
+
+    @Override
     public ApiResponse<UserInfoResponse> update(UserInfoRequest req) {
         if(req.getId() != null){
             UserInfo userInfo = userInfoRepository.findById(req.getId())
@@ -238,13 +284,17 @@ public class IUserInfoService implements UserInfoService {
 
 
     @Override
-    public ApiResponse<UserInfoResponse> update2(UserInfoRequest req) {
+    public ApiResponse<UserInfoResponse> update2(UserInfoUpdateRequest req) {
         if(req.getId() != null){
             UserInfo userInfo = userInfoRepository.findById(req.getId())
                     .orElseThrow(() -> new AppException(ErrorCode.USER_NOT_EXIST));
-            //List<AuditLog> auditLogs = ModelMapperUtil.mapWithLog(req, userInfo, modelMapper);
             modelMapper.map(req, userInfo);
 
+            try {
+                userInfo.setAvatar(uploadImage(req.getAvatar()));
+            }catch(Exception e) {
+                e.printStackTrace();
+            }
             userInfo = userInfoRepository.save(userInfo);
 
             //Update Cache
@@ -254,19 +304,49 @@ public class IUserInfoService implements UserInfoService {
                     .action(AppConstant.ACTION.REBUILD)
                     .build());
 
-//            if(auditLogs != null) {
-//                AuditLogRequest auditLogRequest = AuditLogRequest.builder()
-//                        .auditLogs(auditLogs)
-//                        .build();
-//                log.info("Dto log: {}", auditLogs);
-//                kafkaTemplate.send(AppConstant.Topic.WRITE_LOG, auditLogRequest);
-//            }
             return ApiResponse.<UserInfoResponse>builder()
                     .result(modelMapper.map(userInfo, UserInfoResponse.class))
                     .build();
         }else{
             return null;
         }
+    }
+
+    private String uploadImage(MultipartFile file) throws IOException {
+        String contentType = file.getContentType();
+        InputStream inputStream = file.getInputStream();
+
+        //Kiểm tra nếu không phải là ảnh thì không cho phép tiếp tục
+        if (!contentType.equals("image/jpeg")
+                && !contentType.equals("image/png")
+                && !contentType.equals("image/webp")
+                && !contentType.equals("image/gif")
+                && !contentType.equals("image/bmp")) {
+            throw new AppException(ErrorCode.NOT_VALID_FORMAT_IMAGE);
+        }
+
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
+
+        String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
+
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(AWS_BUCKET)
+                .key(keyName)
+                .contentType(contentType)
+                .build();
+
+        PutObjectResponse future = s3Client.putObject(
+                putObjectRequest,
+                RequestBody.fromInputStream(inputStream, file.getSize())
+        );   //Đẩy hình ảnh lên trên bucket
+
+//        URL url = s3AsyncClient.getUrl(AWS_BUCKET, keyName);
+//        //Ở đây đang để ở public access
+//        //nếu block access đi ta cần cấu hình IAM role...(Tìm hiểu thêm)
+//        return url.toString();
+
+        return String.format("https://%s.s3.amazonaws.com/%s", AWS_BUCKET, keyName);
     }
 
 }

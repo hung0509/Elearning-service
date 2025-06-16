@@ -1,10 +1,10 @@
-package vn.xuanhung.ELearning_Service.entity;
+package vn.xuanhung.ELearning_Service.entity.view;
 
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
-import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
+import org.hibernate.annotations.Immutable;
 
 import java.math.BigDecimal;
 import java.util.Date;
@@ -15,10 +15,10 @@ import java.util.Date;
 @NoArgsConstructor
 @Getter
 @Setter
+@Immutable
 @FieldDefaults(level = AccessLevel.PRIVATE)
-@Table(name = "d_transaction")
-@EntityListeners(AuditEntityListener.class)
-public class Transaction extends  AbstractMappedEntity{
+@Table(name = "d_transaction_view")
+public class TransactionView {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
@@ -35,9 +35,6 @@ public class Transaction extends  AbstractMappedEntity{
     @Column(name = "balance")
     BigDecimal balance;
 
-    @Column(name = "description")
-    String description;
-
     @Column(name = "payment_method")
     String paymentMethod;
 
@@ -49,4 +46,13 @@ public class Transaction extends  AbstractMappedEntity{
 
     @Column(name = "currency")
     String currency;
+
+    @Column(name = "full_name")
+    String fullName;
+
+    @Column(name = "course_name")
+    String courseName;
+
+    @Column(name = "created_at")
+    String createdAt;
 }
