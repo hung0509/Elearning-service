@@ -14,7 +14,6 @@ import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_course_document")
-@EntityListeners(AuditEntityListener.class)
 public class CourseDocument extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

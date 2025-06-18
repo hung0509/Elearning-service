@@ -14,7 +14,7 @@ import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_category")
-@EntityListeners(AuditEntityListener.class)
+//@EntityListeners(AuditEntityListener.class)
 public class Category {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -19,6 +19,9 @@ public class AuditLog extends AbstractMappedEntity{
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     Integer id;
 
+    @Column(name = "create_or_remove_id")
+    String CRId;
+
     @Column(name = "value_old")
     String valueOld;
 

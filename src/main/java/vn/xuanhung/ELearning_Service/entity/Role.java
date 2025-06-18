@@ -1,7 +1,9 @@
 package vn.xuanhung.ELearning_Service.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,7 +20,7 @@ import java.util.Set;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_role")
-@EntityListeners(AuditEntityListener.class)
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "roleName")
 public class Role {
     @Id
     @Column(name = "role_name", length = 20, nullable = false)
@@ -33,10 +35,10 @@ public class Role {
             joinColumns = @JoinColumn(name= "role_name"),
             inverseJoinColumns = @JoinColumn(name = "permission_name")
     )
-    @JsonManagedReference
+//    @JsonManagedReference(value = "role-permissions")
     Set<Permission> permissions;
 
-    @JsonManagedReference
+    @JsonManagedReference(value = "role-accounts")
     @OneToMany(mappedBy = "role")
     Set<Account> accounts;
 

@@ -17,7 +17,7 @@ import java.util.Date;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_discount")
-@EntityListeners(AuditEntityListener.class)
+//@EntityListeners(AuditEntityListener.class)
 public class Discount extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

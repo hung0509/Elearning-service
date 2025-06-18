@@ -8,8 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import vn.xuanhung.ELearning_Service.audit.annotation.NoAudit;
 import vn.xuanhung.ELearning_Service.audit.context.AuditorContext;
 import vn.xuanhung.ELearning_Service.entity.AuditLog;
+import vn.xuanhung.ELearning_Service.exception.AppException;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.*;
 
@@ -38,30 +40,62 @@ public class AuditLogUtil {
         Object reference = (newObj != null) ? newObj : oldObj;
         Class<?> clazz = reference.getClass();
 
-        for (Field field : clazz.getDeclaredFields()) {
-            field.setAccessible(true);
-            String fieldName = field.getName();
-            if (shouldSkipField(field, excluded)) continue;
+        switch (action){
+            case "UPDATE": {
+                for (Field field : clazz.getDeclaredFields()) {
+                    field.setAccessible(true);
+                    String fieldName = field.getName();
+                    if (shouldSkipField(field, excluded)) continue;
 
-            try {
-                Object oldVal = oldObj != null ? field.get(oldObj) : null;
-                Object newVal = newObj != null ? field.get(newObj) : null;
+                    try {
+                        Object oldVal = oldObj != null ? field.get(oldObj) : null;
+                        Object newVal = newObj != null ? field.get(newObj) : null;
 
-                if (!Objects.equals(oldVal, newVal)) {
-                    log.info("Field changed: {}, from '{}' to '{}'", fieldName, oldVal, newVal);
-                    logs.add(AuditLog.builder()
-                            .userName(AuditorContext.getCurrentUser())
-                            .fieldChange(fieldName)
-                            .valueOld(oldVal != null ? oldVal.toString() : null)
-                            .valueNew(newVal != null ? newVal.toString() : null)
-                            .classAudit(clazz.getSimpleName())
-                            .action(action)
-                            .build());
+                        if (!Objects.equals(oldVal, newVal)) {
+                            log.info("Field changed: {}, from '{}' to '{}'", fieldName, oldVal, newVal);
+                            logs.add(AuditLog.builder()
+                                    .userName(AuditorContext.getCurrentUser())
+                                    .fieldChange(fieldName)
+                                    .valueOld(oldVal != null ? oldVal.toString() : null)
+                                    .valueNew(newVal != null ? newVal.toString() : null)
+                                    .classAudit(clazz.getSimpleName())
+                                    .action(action)
+                                    .build());
+                        }
+                    } catch (IllegalAccessException e) {
+                        log.warn("Can't access field: {}", fieldName);
+                    }
                 }
-            } catch (IllegalAccessException e) {
-                log.warn("Can't access field: {}", fieldName);
             }
+            break;
+
+            case "CREATE":
+            case "REMOVE":
+            {
+                Object crId = null;
+                try {
+                    Method getIdMethod = newObj.getClass().getMethod("getId");
+                    crId = getIdMethod.invoke(newObj);
+                } catch (NoSuchMethodException e) {
+                    log.warn("Class {} không có phương thức getId()", newObj.getClass().getSimpleName());
+                } catch (Exception e) {
+                    log.warn("Lỗi khi gọi getId() từ class {}", newObj.getClass().getSimpleName(), e);
+                }
+
+                logs.add(AuditLog.builder()
+                        .CRId(crId.toString())
+                        .userName(AuditorContext.getCurrentUser())
+                        .classAudit(clazz.getSimpleName())
+                        .action(action)
+                        .build());
+            }
+            break;
+
+            default:
+                log.info("Hành động này chưa được định nghĩa");
         }
+
+
         return logs;
     }
 

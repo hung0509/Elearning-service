@@ -15,7 +15,6 @@ import vn.xuanhung.ELearning_Service.audit.listener.AuditEntityListener;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_user_lesson")
-@EntityListeners(AuditEntityListener.class)
 public class UserLesson extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

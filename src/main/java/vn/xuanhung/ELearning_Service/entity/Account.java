@@ -45,7 +45,7 @@ public class Account extends AbstractMappedEntity {
     @Column(name = "expires_at")
     Date expiresAt;
 
-    @JsonBackReference
+    @JsonBackReference(value = "role-accounts")
     @ManyToOne
     @JoinColumn(name = "role_name", referencedColumnName = "role_name")
     Role role;

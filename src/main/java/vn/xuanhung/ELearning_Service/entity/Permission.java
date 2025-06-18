@@ -2,6 +2,8 @@ package vn.xuanhung.ELearning_Service.entity;
 
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
@@ -18,7 +20,7 @@ import java.util.Set;
 @Setter
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_permission")
-@EntityListeners(AuditEntityListener.class)
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "permissionName")
 public class Permission {
     @Id
     @Column(name = "permission_name" , length = 50, nullable = false)
@@ -28,6 +30,6 @@ public class Permission {
     String description;
 
     @ManyToMany(mappedBy = "permissions")
-    @JsonBackReference
+    //@JsonBackReference(value = "role-permissions")
     Set<Role> roles;
 }

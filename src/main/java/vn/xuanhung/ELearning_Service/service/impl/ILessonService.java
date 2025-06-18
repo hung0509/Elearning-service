@@ -95,8 +95,10 @@ public class ILessonService implements LessonService {
                 .courseId(lesson.getCourseId())
                 .action(AppConstant.ACTION.INVALIDATE)
                 .build());
+
+        LessonResponse lessonResponse = modelMapper.map(lesson, LessonResponse.class);
         return ApiResponse.<LessonResponse>builder()
-                .result(modelMapper.map(lesson, LessonResponse.class))
+                .result(lessonResponse)
                 .build();
     }
 
