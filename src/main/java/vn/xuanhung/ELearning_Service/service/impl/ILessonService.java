@@ -2,9 +2,9 @@ package vn.xuanhung.ELearning_Service.service.impl;
 
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.youtube.YouTube;
-import com.google.api.services.youtube.model.Video;
-import com.google.api.services.youtube.model.VideoSnippet;
-import com.google.api.services.youtube.model.VideoStatus;
+import com.google.api.services.youtube.model.*;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -46,6 +47,7 @@ public class ILessonService implements LessonService {
     KafkaTemplate<String, Object> kafkaTemplate;
     YouTube youtube;
     ModelMapper modelMapper;
+    EntityManager entityManager;
 
     @Override
     public ApiResponsePagination<List<LessonResponse>> findAll(LessonRequest request) {
@@ -83,8 +85,13 @@ public class ILessonService implements LessonService {
         Lesson lesson = modelMapper.map(req, Lesson.class);
         lesson.setIsActive("Y");
 
+        String playlistId = getPlaylistId(req.getCourseId());
+        if(playlistId != null){
+            lesson.setPlayListId(playlistId);
+        }
+
         try {
-            lesson.setUrlLesson(uploadVideo(req.getUrlLesson(), req.getLessonName(), req.getDescription()));
+            lesson.setUrlLesson(uploadVideo(req.getUrlLesson(), req.getLessonName(), req.getDescription(), playlistId));
         }catch (Exception e){
             e.printStackTrace();
         }
@@ -100,6 +107,19 @@ public class ILessonService implements LessonService {
         return ApiResponse.<LessonResponse>builder()
                 .result(lessonResponse)
                 .build();
+    }
+
+    private String getPlaylistId(Integer courseId){
+        StringBuilder sql = new StringBuilder("SELECT play_lít FROM d_course where course_id = :courseId");
+
+        Query query = entityManager.createNativeQuery(sql.toString());
+        query.setParameter("courseId", courseId);
+
+        Object playlistId = query.getSingleResult();
+        if(playlistId != null)
+            return query.toString();
+
+        return null;
     }
 
     @Override
@@ -142,7 +162,7 @@ public class ILessonService implements LessonService {
                 .build();
     }
 
-    private String uploadVideo(MultipartFile filePath, String title, String description) throws Exception {
+    private String uploadVideo(MultipartFile filePath, String title, String description, String playlistId) throws Exception {
         // Tạo Metadata cho video
         Video video = new Video();
 
@@ -168,6 +188,8 @@ public class ILessonService implements LessonService {
                     .insert("snippet,status", video, mediaContent);
             Video response = request.execute();
 
+            addVideoToPlaylist(playlistId, response.getId());
+
             // Trả về URL video đã upload
             System.out.println("Video uploaded successfully. Video ID: " + response.getId());
             return "https://www.youtube.com/embed/" + response.getId();
@@ -176,6 +198,26 @@ public class ILessonService implements LessonService {
         } finally {
             // Xóa file tạm
             tempFile.delete();
+        }
+    }
+
+    public void addVideoToPlaylist(String playlistId, String videoId) {
+        try {
+            PlaylistItemSnippet playlistItemSnippet = new PlaylistItemSnippet();
+            playlistItemSnippet.setPlaylistId(playlistId);
+
+            ResourceId resourceId = new ResourceId();
+            resourceId.setKind("youtube#video");
+            resourceId.setVideoId(videoId);
+            playlistItemSnippet.setResourceId(resourceId);
+
+            PlaylistItem playlistItem = new PlaylistItem();
+            playlistItem.setSnippet(playlistItemSnippet);
+
+            youtube.playlistItems().insert("snippet", playlistItem).execute();
+
+        } catch (Exception e) {
+            throw new RuntimeException("Error add video to playlist", e);
         }
     }
 }

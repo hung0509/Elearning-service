@@ -52,8 +52,10 @@ public class AuditLogUtil {
                         Object newVal = newObj != null ? field.get(newObj) : null;
 
                         if (!Objects.equals(oldVal, newVal)) {
+                            Object crId = extractId(reference);
                             log.info("Field changed: {}, from '{}' to '{}'", fieldName, oldVal, newVal);
                             logs.add(AuditLog.builder()
+                                    .CRId(crId.toString())
                                     .userName(AuditorContext.getCurrentUser())
                                     .fieldChange(fieldName)
                                     .valueOld(oldVal != null ? oldVal.toString() : null)
@@ -72,16 +74,7 @@ public class AuditLogUtil {
             case "CREATE":
             case "REMOVE":
             {
-                Object crId = null;
-                try {
-                    Method getIdMethod = newObj.getClass().getMethod("getId");
-                    crId = getIdMethod.invoke(newObj);
-                } catch (NoSuchMethodException e) {
-                    log.warn("Class {} không có phương thức getId()", newObj.getClass().getSimpleName());
-                } catch (Exception e) {
-                    log.warn("Lỗi khi gọi getId() từ class {}", newObj.getClass().getSimpleName(), e);
-                }
-
+                Object crId = extractId(reference);
                 logs.add(AuditLog.builder()
                         .CRId(crId.toString())
                         .userName(AuditorContext.getCurrentUser())
@@ -97,6 +90,19 @@ public class AuditLogUtil {
 
 
         return logs;
+    }
+
+    private static Object extractId(Object obj) {
+        if (obj == null) return null;
+        try {
+            Method getIdMethod = obj.getClass().getMethod("getId");
+            return getIdMethod.invoke(obj);
+        } catch (NoSuchMethodException e) {
+            log.warn("Class {} không có phương thức getId()", obj.getClass().getSimpleName());
+        } catch (Exception e) {
+            log.warn("Lỗi khi gọi getId() từ class {}", obj.getClass().getSimpleName(), e);
+        }
+        return null;
     }
 
     private static boolean shouldSkipField(Field field, Set<String> excluded) {

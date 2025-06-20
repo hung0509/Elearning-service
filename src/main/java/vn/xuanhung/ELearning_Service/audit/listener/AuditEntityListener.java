@@ -19,8 +19,8 @@ public class AuditEntityListener {
 
     private static final ThreadLocal<Object> oldStateHolder = new ThreadLocal<>();
 
-    @PrePersist
-    public void prePersist(Object entity) {
+    @PostPersist
+    public void postPersist(Object entity) {
         log.info("Pre persist...");
         List<AuditLog> logs = AuditLogUtil.logCreate(entity, getExcludedFields(entity));
         saveLogs(logs);
@@ -47,12 +47,20 @@ public class AuditEntityListener {
     public void postUpdate(Object entity) {
         log.info("Pre update...");
         Object oldState = oldStateHolder.get();
-        log.info("Obj old: {}", oldState);
-        log.info("Obj new: {}", entity);
 
-        List<AuditLog> logs = AuditLogUtil.logUpdate(oldState, entity, getExcludedFields(entity));
-        saveLogs(logs);
-        oldStateHolder.remove();
+        if (oldState == null) {
+            log.warn("Old state is null, bỏ qua audit update cho: {}", entity);
+            return;
+        }
+
+        try {
+            log.info("Obj old: {}", oldState);
+            log.info("Obj new: {}", entity);
+            List<AuditLog> logs = AuditLogUtil.logUpdate(oldState, entity, getExcludedFields(entity));
+            saveLogs(logs);
+        } finally {
+            oldStateHolder.remove(); // tránh memory leak
+        }
     }
 
     private Set<String> getExcludedFields(Object entity) {

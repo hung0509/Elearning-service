@@ -128,8 +128,8 @@ public class IUserInfoService implements UserInfoService {
                 .build());
 
         //Câp nhật lại trạng thái khóa học! xóa c
-        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
-                .userId(req.getUserId())
+        kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
+                .courseId(req.getCourseId())
                 .action(AppConstant.ACTION.INVALIDATE)
                 .build());
 
