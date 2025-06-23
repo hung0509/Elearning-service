@@ -41,6 +41,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Date;
@@ -328,7 +329,14 @@ public class IUserInfoService implements UserInfoService {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
 
-        String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = sanitizeFilename(originalFilename);  // Xử lý tên an toàn
+
+        if (safeFilename.length() > 100) {
+            safeFilename = safeFilename.substring(safeFilename.length() - 100);
+        }
+
+        String keyName = AWS_FOLDER + "/" + safeFilename;
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(AWS_BUCKET)
@@ -348,5 +356,17 @@ public class IUserInfoService implements UserInfoService {
 
         return String.format("https://%s.s3.amazonaws.com/%s", AWS_BUCKET, keyName);
     }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null) return "unknown";
+
+        String normalized = Normalizer.normalize(filename, Normalizer.Form.NFD);
+        String ascii = normalized.replaceAll("[^\\p{ASCII}]", "");
+        ascii = ascii.replaceAll("\\s+", "-");
+        ascii = ascii.replaceAll("[^a-zA-Z0-9._-]", "");
+        ascii = ascii.replaceAll("[-_]{2,}", "-"); // Gộp gạch
+        return ascii;
+    }
+
 
 }

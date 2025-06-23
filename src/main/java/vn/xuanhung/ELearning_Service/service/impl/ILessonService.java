@@ -26,15 +26,19 @@ import vn.xuanhung.ELearning_Service.dto.request.CourseCacheUpdateEvent;
 import vn.xuanhung.ELearning_Service.dto.request.LessonRequest;
 import vn.xuanhung.ELearning_Service.dto.request.LessonUpdateRequest;
 import vn.xuanhung.ELearning_Service.dto.response.LessonResponse;
+import vn.xuanhung.ELearning_Service.entity.Course;
 import vn.xuanhung.ELearning_Service.entity.Lesson;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 import vn.xuanhung.ELearning_Service.exception.ErrorCode;
+import vn.xuanhung.ELearning_Service.repository.CourseRepository;
 import vn.xuanhung.ELearning_Service.repository.LessonRepository;
 import vn.xuanhung.ELearning_Service.service.LessonService;
 import vn.xuanhung.ELearning_Service.specification.LessonSpecification;
 
 import java.io.File;
 import java.io.FileInputStream;
+import java.math.BigDecimal;
+import java.text.Normalizer;
 import java.util.List;
 
 @Service
@@ -43,6 +47,7 @@ import java.util.List;
 @FieldDefaults(level = AccessLevel.PRIVATE, makeFinal = true)
 public class ILessonService implements LessonService {
     LessonRepository lessonRepository;
+    CourseRepository courseRepository;
 
     KafkaTemplate<String, Object> kafkaTemplate;
     YouTube youtube;
@@ -96,10 +101,19 @@ public class ILessonService implements LessonService {
             e.printStackTrace();
         }
 
-        lessonRepository.save(lesson);
+        lesson = lessonRepository.save(lesson);
+
+        //Cập nhật COurse
+        Course course = courseRepository.findById(lesson.getCourseId())
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+        course.setQuantity(course.getQuantity().add(BigDecimal.ONE));
+        course.setCourseDuration(course.getCourseDuration().add(lesson.getLessonTime()));
+        course = courseRepository.save(course);
+
         log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
         kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
-                .courseId(lesson.getCourseId())
+                .courseId(course.getId())
                 .action(AppConstant.ACTION.INVALIDATE)
                 .build());
 
@@ -109,18 +123,21 @@ public class ILessonService implements LessonService {
                 .build();
     }
 
-    private String getPlaylistId(Integer courseId){
-        StringBuilder sql = new StringBuilder("SELECT play_lít FROM d_course where course_id = :courseId");
+    private String getPlaylistId(Integer courseId) {
+        String sql = "SELECT playlist_id FROM d_course WHERE course_id = :courseId";
 
-        Query query = entityManager.createNativeQuery(sql.toString());
+        Query query = entityManager.createNativeQuery(sql);
         query.setParameter("courseId", courseId);
 
-        Object playlistId = query.getSingleResult();
-        if(playlistId != null)
-            return query.toString();
+        Object result = query.getSingleResult();
+
+        if (result != null) {
+            return result.toString(); // ✅ Lấy giá trị thật sự từ kết quả truy vấn
+        }
 
         return null;
     }
+
 
     @Override
     public ApiResponse<String> deleteById(Integer id) {
@@ -130,6 +147,14 @@ public class ILessonService implements LessonService {
 
         lesson.setIsActive(AppConstant.STATUS_UNACTIVE);
         lessonRepository.save(lesson);
+
+        Course course = courseRepository.findById(lesson.getCourseId())
+                .orElseThrow(() -> new AppException(ErrorCode.COURSE_NOT_EXIST));
+
+        course.setQuantity(course.getQuantity().subtract(BigDecimal.ONE).max(BigDecimal.ZERO));
+        course.setCourseDuration(course.getCourseDuration().subtract(lesson.getLessonTime()).max(BigDecimal.ZERO));
+        course = courseRepository.save(course);
+
 
         log.info("Send Kafka with topic: {}", AppConstant.Topic.COURSE_UPDATE_EVENT);
         kafkaTemplate.send(AppConstant.Topic.COURSE_UPDATE_EVENT, CourseCacheUpdateEvent.builder()
@@ -175,8 +200,18 @@ public class ILessonService implements LessonService {
         snippet.setDescription(description);
         video.setSnippet(snippet);
 
+
+        // Làm sạch tên file gốc để tránh ký tự đặc biệt
+        String originalFilename = filePath.getOriginalFilename();
+        String safeFilename = sanitizeFilename(originalFilename);  // Xử lý tên an toàn
+
+        if (safeFilename.length() > 100) {
+            safeFilename = safeFilename.substring(safeFilename.length() - 100);
+        }
+
+
         // Lưu file tạm từ MultipartFile
-        File tempFile = File.createTempFile("upload", filePath.getOriginalFilename());
+        File tempFile = File.createTempFile("upload", safeFilename);
         filePath.transferTo(tempFile);
 
         // Chuẩn bị nội dung file để upload
@@ -200,6 +235,20 @@ public class ILessonService implements LessonService {
             tempFile.delete();
         }
     }
+
+    // Hàm loại bỏ ký tự không hợp lệ khỏi tên file
+    private String sanitizeFilename(String filename) {
+        if (filename == null) return "unknown";
+
+        String normalized = Normalizer.normalize(filename, Normalizer.Form.NFD);
+        String ascii = normalized.replaceAll("[^\\p{ASCII}]", "");
+        ascii = ascii.replaceAll("\\s+", "-");
+        ascii = ascii.replaceAll("[^a-zA-Z0-9._-]", "");
+        ascii = ascii.replaceAll("[-_]{2,}", "-"); // Gộp gạch
+        return ascii;
+    }
+
+
 
     public void addVideoToPlaylist(String playlistId, String videoId) {
         try {

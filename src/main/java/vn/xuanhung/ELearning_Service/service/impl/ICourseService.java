@@ -53,6 +53,7 @@ import java.io.InputStream;
 import java.math.BigDecimal;
 import java.net.URL;
 import java.nio.file.Paths;
+import java.text.Normalizer;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
@@ -534,7 +535,15 @@ public class ICourseService implements CourseService {
 
     public String uploadTempFile(MultipartFile file) {
         ExecutorService executorService = Executors.newFixedThreadPool(3); // Executor với 3 threads
-        String key = "temp/" + UUID.randomUUID() + "_" + file.getOriginalFilename();
+        // Làm sạch tên file gốc để tránh ký tự đặc biệt
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = sanitizeFilename(originalFilename);  // Xử lý tên an toàn
+
+        if (safeFilename.length() > 100) {
+            safeFilename = safeFilename.substring(safeFilename.length() - 100);
+        }
+
+        String key = "temp/" + UUID.randomUUID() + safeFilename;
 
         try (InputStream inputStream = file.getInputStream()) {
             ObjectMetadata metadata = new ObjectMetadata();
@@ -555,7 +564,7 @@ public class ICourseService implements CourseService {
             // Đợi quá trình upload hoàn tất và trả về key
             future.get(); // Đảm bảo upload xong mới tiếp tục
             // In ra key đã upload thành công
-            System.out.println("File uploaded successfully to S3 with key: " + key);
+            log.info("Key: {}", key);
             // Trả về key của file vừa upload lên S3
             return key;
         } catch (IOException e) {
@@ -567,6 +576,18 @@ public class ICourseService implements CourseService {
             executorService.shutdown();
         }
     }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null) return "unknown";
+
+        String normalized = Normalizer.normalize(filename, Normalizer.Form.NFD);
+        String ascii = normalized.replaceAll("[^\\p{ASCII}]", "");
+        ascii = ascii.replaceAll("\\s+", "-");
+        ascii = ascii.replaceAll("[^a-zA-Z0-9._-]", "");
+        ascii = ascii.replaceAll("[-_]{2,}", "-"); // Gộp gạch
+        return ascii;
+    }
+
 
     @Override
     public ApiResponse<String> deleteById(Integer id) {
@@ -612,7 +633,10 @@ public class ICourseService implements CourseService {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
 
-        String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = sanitizeFilename(originalFilename);  // Xử lý tên an toàn
+
+        String keyName = AWS_FOLDER + "/" + safeFilename;
 
         PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(AWS_BUCKET)

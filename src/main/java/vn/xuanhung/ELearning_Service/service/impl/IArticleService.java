@@ -47,6 +47,8 @@ import vn.xuanhung.ELearning_Service.specification.ArticleUserViewSpecification;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.text.Normalizer;
+import java.text.SimpleDateFormat;
 import java.time.Duration;
 import java.util.*;
 
@@ -249,7 +251,23 @@ public class IArticleService implements ArticleService {
         ObjectMetadata metadata = new ObjectMetadata();
         metadata.setContentType(contentType); // Hoặc loại nội dung phù hợp khác
 
-        String keyName = AWS_FOLDER + "/" + file.getOriginalFilename();
+        String originalFilename = file.getOriginalFilename();
+        String safeFilename = sanitizeFilename(originalFilename);  // Xử lý tên an toàn
+        String extension = "";
+        if (safeFilename.contains(".")) {
+            extension = safeFilename.substring(safeFilename.lastIndexOf("."));
+        }
+
+        // Tạo timestamp theo định dạng yyyyMMdd_HHmmss
+        String timestamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+
+        // Tạo chuỗi random ngắn (3 ký tự từ UUID)
+        String randomSuffix = UUID.randomUUID().toString().substring(0, 4);
+
+        // Tạo tên file mới
+        String finalFilename = timestamp + randomSuffix + extension;
+
+        String keyName = AWS_FOLDER + "/" + finalFilename;
 
         software.amazon.awssdk.services.s3.model.PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(AWS_BUCKET)
@@ -283,6 +301,21 @@ public class IArticleService implements ArticleService {
         }
         return null;
     }
+
+    private String sanitizeFilename(String filename) {
+        if (filename == null) return "unknown";
+
+        // 1. Loại bỏ Unicode, ký tự đặc biệt
+        String normalized = Normalizer.normalize(filename, Normalizer.Form.NFD);
+        String ascii = normalized.replaceAll("[^\\p{ASCII}]", "");
+
+        // 2. Bỏ khoảng trắng, thay bằng dấu gạch ngang
+        ascii = ascii.replaceAll("[\\s]", "-");
+
+        // 3. Loại bỏ các ký tự nguy hiểm
+        return ascii.replaceAll("[^a-zA-Z0-9\\.\\-_]", "");
+    }
+
 
     private String handleContentAndUploadImage(String content)  {
         Document document = Jsoup.parse(content); // Parse HTML content

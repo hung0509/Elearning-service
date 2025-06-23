@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectResponse;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import vn.xuanhung.ELearning_Service.common.ApiResponsePagination;
 import vn.xuanhung.ELearning_Service.common.RedisCacheFactory;
 import vn.xuanhung.ELearning_Service.common.RedisGenericCacheService;
@@ -70,7 +71,7 @@ public class IProcessKafkaService {
             topics = AppConstant.Topic.VIDEO_TOPIC,
             groupId = "gr-sync-order",
             containerFactory = "kafkaListenerContainerFactory")
-    private void uploadVideo(ConsumerRecord<String, KafkaUploadVideoDto> consumerRecord, Acknowledgment acknowledgment)
+    public void uploadVideo(ConsumerRecord<String, KafkaUploadVideoDto> consumerRecord, Acknowledgment acknowledgment)
             throws Exception {
         // Tạo Metadata cho video
         log.info("UserService: Received message from Kafka topic: " + AppConstant.Topic.VIDEO_TOPIC);
@@ -85,8 +86,24 @@ public class IProcessKafkaService {
                 .bucket(AWS_BUCKET)
                 .key(kafkaUploadVideoDto.getS3Url())  // ví dụ: "folder1/image.png"
                 .build();
-        ResponseInputStream<GetObjectResponse> s3Object = s3Client.getObject(getObjectRequest);
+        ResponseInputStream<GetObjectResponse> s3Object = null;
+        for (int i = 0; i < 5; i++) {
+            try {
+                s3Object = s3Client.getObject(getObjectRequest);
+                log.info("Lấy file thành công!");
+                break;
+            } catch (NoSuchKeyException e) {
+                log.info("⏳ S3 chưa sẵn sàng, thử lại lần {}", i + 1);
+                Thread.sleep(300);
+            }
+        }
+        if (s3Object == null) {
+            log.info("Không thể đọc được object từ S3 sau nhiều lần thử.");
+            acknowledgment.acknowledge(); // hoặc return nếu muốn retry lại sau
+            return;
+        }
 
+        s3Object = s3Client.getObject(getObjectRequest);
 
         InputStreamContent mediaContent = new InputStreamContent("video/*", s3Object);
         mediaContent.setLength(s3Object.response().contentLength());
@@ -94,7 +111,7 @@ public class IProcessKafkaService {
             Video video = new Video();
 
             VideoStatus status = new VideoStatus();
-            status.setPrivacyStatus("private"); // Mặc định là public
+            status.setPrivacyStatus("public"); // Mặc định là public
             video.setStatus(status);
 
             VideoSnippet snippet = new VideoSnippet();
