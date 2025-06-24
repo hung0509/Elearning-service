@@ -40,7 +40,7 @@ public class IDiscountService implements DiscountService {
         Pageable pageable = PageRequest.of(
                 request.getPage(),
                 request.getPageSize(),
-                Sort.by(Sort.Direction.ASC, "createdAt")
+                Sort.by(Sort.Direction.DESC, "createdAt")
         );
         Specification<Discount> specification = DiscountSpecification.getSpecification(request);
 

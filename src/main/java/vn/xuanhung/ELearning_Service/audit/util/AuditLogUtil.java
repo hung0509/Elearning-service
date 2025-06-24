@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.SerializationFeature;
 import lombok.extern.slf4j.Slf4j;
 import vn.xuanhung.ELearning_Service.audit.annotation.NoAudit;
 import vn.xuanhung.ELearning_Service.audit.context.AuditorContext;
+import vn.xuanhung.ELearning_Service.entity.Account;
 import vn.xuanhung.ELearning_Service.entity.AuditLog;
 import vn.xuanhung.ELearning_Service.exception.AppException;
 
@@ -94,16 +95,37 @@ public class AuditLogUtil {
 
     private static Object extractId(Object obj) {
         if (obj == null) return null;
+
         try {
-            Method getIdMethod = obj.getClass().getMethod("getId");
-            return getIdMethod.invoke(obj);
+            if (obj instanceof Account) {
+                Method getAccountIdMethod = obj.getClass().getMethod("getAccountId");
+                return getAccountIdMethod.invoke(obj);
+            } else {
+                Method getIdMethod = obj.getClass().getMethod("getId");
+                return getIdMethod.invoke(obj);
+            }
         } catch (NoSuchMethodException e) {
-            log.warn("Class {} không có phương thức getId()", obj.getClass().getSimpleName());
+            log.warn("Class {} không có phương thức getId()/getAccountId()", obj.getClass().getSimpleName());
         } catch (Exception e) {
-            log.warn("Lỗi khi gọi getId() từ class {}", obj.getClass().getSimpleName(), e);
+            log.warn("Lỗi khi gọi phương thức getId()/getAccountId() từ class {}", obj.getClass().getSimpleName(), e);
         }
+
         return null;
     }
+
+
+//    private static Object extractId(Object obj) {
+//        if (obj == null) return null;
+//        try {
+//            Method getIdMethod = obj.getClass().getMethod("getId");
+//            return getIdMethod.invoke(obj);
+//        } catch (NoSuchMethodException e) {
+//            log.warn("Class {} không có phương thức getId()", obj.getClass().getSimpleName());
+//        } catch (Exception e) {
+//            log.warn("Lỗi khi gọi getId() từ class {}", obj.getClass().getSimpleName(), e);
+//        }
+//        return null;
+//    }
 
     private static boolean shouldSkipField(Field field, Set<String> excluded) {
         return Modifier.isStatic(field.getModifiers())

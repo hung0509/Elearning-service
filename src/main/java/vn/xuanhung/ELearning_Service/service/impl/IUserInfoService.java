@@ -203,6 +203,12 @@ public class IUserInfoService implements UserInfoService {
                             .courseId(lesson.getCourseId())
                             .action(AppConstant.ACTION.INVALIDATE)
                             .build());
+
+                    log.info("Update cache user-info");
+                    kafkaTemplate.send(AppConstant.Topic.USER_CACHE_UPDATE_EVENT, UserInfoCacheUpdateEvent.builder()
+                            .userId(req.getId())
+                            .action(AppConstant.ACTION.REBUILD)
+                            .build());
                 }
 
                 userCourseRepository.save(userCourse);

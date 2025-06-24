@@ -17,7 +17,7 @@ import java.math.BigDecimal;
 @Builder
 @FieldDefaults(level = AccessLevel.PRIVATE)
 @Table(name = "d_certificate")
-@EntityListeners(AuditEntityListener.class)
+//@EntityListeners(AuditEntityListener.class)
 public class Certificate extends AbstractMappedEntity{
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
